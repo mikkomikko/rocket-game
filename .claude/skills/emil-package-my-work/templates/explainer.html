@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!--
+  Starter explainer for scripts/render.cjs. Copy it to the project root as
+  index.html, then replace the scenes. Rules it already follows:
+  - every style is set from t inside window.render(t); no CSS transitions,
+    animations, timers or Date.now()
+  - easing goes through bezier(), the same curves CSS uses
+  - scenes hard-cut through display
+  - window.DURATION is the video length in seconds
+  Swap the fonts for the ones the product uses (@font-face with local
+  .woff2 files next to this page).
+-->
+<style>
+  :root { --text: #21201c; --muted: #82827c; --line: #434343; --accent: #0182fb; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1080px; overflow: hidden; background: #fff; }
+  body { font-family: ui-sans-serif, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+  .mono { font-family: ui-monospace, "SF Mono", monospace; }
+  .scene { position: absolute; inset: 0; }
+
+  /* Scene 1: one dropdown per side, mirrored around the center. */
+  .side { position: absolute; top: 300px; width: 300px; }
+  .side.left { left: 150px; } .side.right { right: 150px; }
+  .trigger { height: 64px; border-radius: 16px; background: #f4f4f2; display: flex; align-items: center; padding: 0 22px; font-size: 24px; font-weight: 500; will-change: transform; }
+  .menu { margin-top: 12px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0/.08), 0 8px 24px rgb(0 0 0/.08); padding: 10px; transform-origin: top center; opacity: 0; }
+  .menu div { height: 52px; border-radius: 10px; display: flex; align-items: center; padding: 0 14px; font-size: 22px; }
+  .menu div:first-child { background: #f4f4f2; }
+</style>
+</head>
+<body>
+
+<section class="scene" id="s1">
+  <div class="side left"><div class="trigger">Options</div><div class="menu"><div>Edit</div><div>Duplicate</div><div>Archive</div></div></div>
+  <div class="side right"><div class="trigger">Options</div><div class="menu"><div>Edit</div><div>Duplicate</div><div>Archive</div></div></div>
+</section>
+
+<script>
+// ---------- math ----------
+/** CSS cubic-bezier(x1, y1, x2, y2) as a function of progress 0..1. */
+function bezier(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const sx = (t) => ((ax * t + bx) * t + cx) * t;
+  const sy = (t) => ((ay * t + by) * t + cy) * t;
+  const dx = (t) => (3 * ax * t + 2 * bx) * t + cx;
+  return (x) => {
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    let t = x;
+    for (let i = 0; i < 8; i++) { const e = sx(t) - x, d = dx(t); if (Math.abs(e) < 1e-7) return sy(t); if (Math.abs(d) < 1e-6) break; t -= e / d; }
+    let lo = 0, hi = 1; t = x;
+    for (let i = 0; i < 40; i++) { const v = sx(t); if (Math.abs(v - x) < 1e-7) break; if (x > v) lo = t; else hi = t; t = (lo + hi) / 2; }
+    return sy(t);
+  };
+}
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const E = {
+  easeIn: bezier(0.42, 0, 1, 1),
+  easeOut: bezier(0.23, 1, 0.32, 1),
+};
+
+/**
+ * Open/close cycles: [openAt, closeAt, slowdown]. closeAt null leaves it open.
+ * Returns progress 0..1 at scene time u.
+ */
+function overlayState(u, cycles, enterDur, exitDur, ease) {
+  let p = 0;
+  for (const [open, close, slow] of cycles) {
+    if (u < open) continue;
+    if (close == null || u < close) p = ease(clamp((u - open) / (enterDur * slow)));
+    else p = 1 - ease(clamp((u - close) / (exitDur * slow)));
+  }
+  return p;
+}
+
+/** Press depth 0..1 peaking on each press time: 90ms down, 160ms back. */
+function pressAmount(u, presses) {
+  let a = 0;
+  for (const p of presses) {
+    const down = clamp((u - (p - 0.09)) / 0.09), up = clamp((u - p) / 0.16);
+    a = Math.max(a, E.easeOut(down) * (1 - E.easeOut(up)));
+  }
+  return a;
+}
+
+// ---------- scenes ----------
+const SCENES = [{ id: "s1", start: 0, end: 7 }];
+window.DURATION = SCENES[SCENES.length - 1].end;
+
+// Twice at normal speed, then once 4× slower, left open until the cut.
+const CYCLES = [[0.4, 1.4, 1], [2.3, 3.3, 1], [4.2, null, 4]];
+const PRESSES = [0.4, 1.4, 2.3, 3.3, 4.2];
+
+const [left, right] = document.querySelectorAll("#s1 .side");
+
+window.render = function (t) {
+  for (const s of SCENES) {
+    document.getElementById(s.id).style.display = t >= s.start && (t < s.end || s === SCENES.at(-1)) ? "block" : "none";
+  }
+
+  { const u = t - SCENES[0].start;
+    for (const [side, ease] of [[left, E.easeIn], [right, E.easeOut]]) {
+      const p = overlayState(u, CYCLES, 0.3, 0.275, ease);
+      const menu = side.querySelector(".menu");
+      menu.style.opacity = p;
+      menu.style.transform = `scale(${0.96 + 0.04 * p})`;
+      side.querySelector(".trigger").style.transform = `scale(${1 - 0.03 * pressAmount(u, PRESSES)})`;
+    } }
+};
+window.render(0);
+</script>
+</body>
+</html>
