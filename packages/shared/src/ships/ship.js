@@ -16,6 +16,7 @@ function makeShip(id) {
     respawnT: 0, invulnT: 0, fireCd: 0, score: 0, deathX: 0, deathY: 0, active: true, lastImpact: 0,
     weapon: 0, frozenT: 0, crossT: 0, ballT: 0,
     input: { turn: 0, thrust: 0, fire: false },
+    inputSeq: 0,   // online: the number of the input being applied (it tags the shots it fires)
   };
 }
 export const ships = [makeShip(0), makeShip(1)];

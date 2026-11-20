@@ -6,7 +6,7 @@ import { hullWorld } from '@rocket-duel/shared/ships/ship.js';
 import { TRAJ_MAX, views } from '../ships/view.js';
 import { shipMass } from '@rocket-duel/shared/ships/physics.js';
 import { bulletGeo } from '../fx/pools.js';
-import { B, MAXB } from '@rocket-duel/shared/bullets.js';
+import { B, BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
 import { bulletColor, MAXT, TR, trailGeo, trailQuad } from '../fx/trails.js';
 import { drawTerrainBits } from '../fx/debris.js';
 import { MAXP, partGeo, PT } from '../fx/particles.js';
@@ -26,7 +26,7 @@ export function drawPools() {
     const f0 = Math.max(0, 1 - (now - TR.t0[k]) / L);
     tn = trailQuad(tp, tc, tn, TR.x0[k], TR.y0[k], f0, TR.x1[k], TR.y1[k], Math.min(1, f1), TR.w[k], TR.r[k], TR.g[k], TR.b[k]);
   }
-  for (let i = 0; i < MAXB; i++) {
+  for (let i = 0; i < BULLET_SLOTS; i++) {
     if (!B.on[i]) continue;
     const kind = B.kind[i], wp = WEAPONS[kind];
     const col = bulletColor(i);

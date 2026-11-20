@@ -3,7 +3,7 @@ import { P } from '@rocket-duel/shared/config.js';
 import { clamp } from '@rocket-duel/shared/math.js';
 import { onSim } from '@rocket-duel/shared/events.js';
 import { localToWorld, ships } from '@rocket-duel/shared/ships/ship.js';
-import { B, MAXB } from '@rocket-duel/shared/bullets.js';
+import { B, BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
 import { BIG } from '@rocket-duel/shared/ships/bigLaser.js';
 import { views } from '../ships/view.js';
 import { BALL_COL, DUST, EMBER, FIRE, ICE_COL, WHITE } from './pools.js';
@@ -190,7 +190,7 @@ export function stepEffects(h) {
       }
     }
   }
-  for (let i = 0; i < MAXB; i++) {
+  for (let i = 0; i < BULLET_SLOTS; i++) {
     if (!B.on[i]) continue;
     const kind = B.kind[i];
     if (kind === 1 && P.smoke && Math.random() < 0.5) emitSmoke(B.x[i], B.y[i], (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, P.smokeLife * 0.35, 5 + Math.random() * 3);

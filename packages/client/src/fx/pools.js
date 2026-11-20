@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BALL_COLOR, FREEZE_COLOR, WEAPONS } from '@rocket-duel/shared/config.js';
 import { scene } from '../render/scene.js';
-import { MAXB } from '@rocket-duel/shared/bullets.js';
+import { BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
 
 /* ------------------------------------------------------------------ *
  * Bullets and particles (fixed pools, drawn as THREE.Points)
@@ -44,7 +44,7 @@ export function pointGeo(n) {
   g.setAttribute('size', new THREE.BufferAttribute(new Float32Array(n), 1));
   return g;
 }
-export const bulletGeo = pointGeo(MAXB);
+export const bulletGeo = pointGeo(BULLET_SLOTS);
 const bulletPts = new THREE.Points(bulletGeo, pointMaterial(0.9));
 bulletPts.frustumCulled = false;
 bulletPts.position.z = 2;

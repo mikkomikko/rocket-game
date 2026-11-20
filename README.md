@@ -23,7 +23,7 @@ npm run dev
 # open http://localhost:5173/?server=ws://localhost:8787 twice
 ```
 
-The first browser to connect flies ship 1, the second ship 2; either set of keys steers your ship, and each player sees one full view of their own ship. The server runs the match; each browser predicts its own ship from the player's keys, so it responds at once even over a slow connection, and eases in the server's corrections. For now online play covers the rock maps (cave, clear, open, pillars, maze, divide) without supply boxes.
+The first browser to connect flies ship 1, the second ship 2; either set of keys steers your ship, and each player sees one full view of their own ship. The server runs the match; each browser predicts its own ship and its own shots from the player's keys, so steering and firing respond at once even over a slow connection, and eases in the server's corrections. For now online play covers the rock maps (cave, clear, open, pillars, maze, divide) without supply boxes.
 
 ## Layout
 
@@ -39,8 +39,8 @@ The first browser to connect flies ship 1, the second ship 2; either set of keys
   - `src/render/`: Three.js scene and shaders, the drawing field, the Big laser beam, cameras and split screen, debug drawing.
   - `src/ui/`: HUD, header, map picker and art, tuning panel, skins, start screen.
   - `src/audio/sfx.js`: synthesized sound effects.
-  - `src/net/online.js`: online mode (`?server=`): sends numbered inputs, predicts the player's own ship and reconciles it with each snapshot, draws the other ship between snapshots, and replays the server's events.
-- `packages/server`: the online game server (Node + `ws`). `src/server.js` seats two players, runs `stepSim` from their inputs and broadcasts snapshots and events; `test/` plays against it with real WebSocket clients.
+  - `src/net/online.js`: online mode (`?server=`): sends numbered inputs, predicts the player's own ship and shots and reconciles them with each snapshot (a predicted shot hands over to the server's bullet fired by the same input), draws the other ship between snapshots, and replays the server's events.
+- `packages/server`: the online game server (Node + `ws`). `src/server.js` seats two players, steps each ship once per input its player sent (`stepSim` with `inputsFor`), and broadcasts snapshots and events; `test/` plays against it with real WebSocket clients.
 - `packages/shared`: code the browser and the server both run. Plain JS: no Three.js, DOM or audio, and it never imports from the client. Import it as `@rocket-duel/shared/<file>`.
   - `config.js` (tuning `P`, presets, weapons, practice toggles), `state.js` (`game`), `math.js`, `random.js` (seeded gameplay randomness).
   - `sim.js`: `stepSim(h)`, one fixed step of the duel. `ships/` (state, physics, weapons, Big laser), `bullets.js` (the bullet pool), `explosions.js`.

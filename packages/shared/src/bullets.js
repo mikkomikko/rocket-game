@@ -11,20 +11,30 @@ import { explode, freezeShip } from './explosions.js';
 /* ------------------------------------------------------------------ *
  * Bullets: one fixed pool for every shot in the game (owner 0 and 1 are the players; 2 and up are map
  * enemies). Spawning, flight and hits on terrain, ships, enemies and map creatures.
+ * The simulation uses slots 0 to MAXB - 1. The slots after them are for a browser's predicted shots
+ * (shown until the server's bullet arrives); the simulation never touches them.
  * ------------------------------------------------------------------ */
-export const MAXB = 600;
+export const MAXB = 600, PREDICTED_SLOTS = 64, BULLET_SLOTS = MAXB + PREDICTED_SLOTS;
+const N = BULLET_SLOTS;
 export const B = {
-  x: new Float32Array(MAXB), y: new Float32Array(MAXB), vx: new Float32Array(MAXB), vy: new Float32Array(MAXB),
-  life: new Float32Array(MAXB), owner: new Int8Array(MAXB), on: new Uint8Array(MAXB), kind: new Uint8Array(MAXB), cursor: 0,
-  tx: new Float32Array(MAXB), ty: new Float32Array(MAXB), tt: new Float32Array(MAXB),   // last point dropped on the trail
+  x: new Float32Array(N), y: new Float32Array(N), vx: new Float32Array(N), vy: new Float32Array(N),
+  life: new Float32Array(N), owner: new Int8Array(N), on: new Uint8Array(N), kind: new Uint8Array(N), cursor: 0,
+  tx: new Float32Array(N), ty: new Float32Array(N), tt: new Float32Array(N),   // last point dropped on the trail
+  seq: new Int32Array(N),   // a player's shot: the number of the input that fired it (online play matches shots by it)
 };
 
+// While a browser predicts its own ship, its shots go to the browser instead of into the pool.
+let predictedShots = null;
+export const onPredictedShot = (fn) => { predictedShots = fn; };
+
 export function spawnBullet(owner, x, y, vx, vy, life, kind = 0) {
+  if (game.predicting) { predictedShots?.(owner, x, y, vx, vy, life, kind); return; }
   for (let k = 0; k < MAXB; k++) {
     const i = (B.cursor + k) % MAXB;
     if (!B.on[i]) {
       B.on[i] = 1; B.owner[i] = owner; B.x[i] = x; B.y[i] = y; B.vx[i] = vx; B.vy[i] = vy; B.life[i] = life; B.kind[i] = kind;
       B.tx[i] = x; B.ty[i] = y; B.tt[i] = game.time;
+      B.seq[i] = owner < 2 ? ships[owner].inputSeq || 0 : 0;
       B.cursor = (i + 1) % MAXB;
       return;
     }

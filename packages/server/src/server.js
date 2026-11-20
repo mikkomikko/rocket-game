@@ -14,7 +14,8 @@ import { B, clearBullets } from '@rocket-duel/shared/bullets.js';
 import { stepSim } from '@rocket-duel/shared/sim.js';
 import { encodeArgs, encodeBullets, encodeShips, SNAP_EVERY } from '@rocket-duel/shared/net.js';
 
-const MAX_QUEUE = 30;   // inputs a player may be ahead of the server (a quarter second)
+const MAX_QUEUE = 240;  // inputs a player may be ahead of the server (2 s); older ones are dropped
+const CATCH_UP = 4;     // with more than this many waiting, a ship plays two inputs a step until it catches up
 
 // Maps without a theme of their own (no creatures or enemies): the ones the server can run so far.
 export const ONLINE_MAPS = Object.keys(MAPS).filter((k) => !MAPS[k].theme);
@@ -72,6 +73,16 @@ export function startServer({ port = 8787, map = 'cave', seed = 7, lag = 0 } = {
     });
   });
 
+  // A ship moves one step per input its player sent, so the server's ship takes the same steps as the
+  // player's own prediction. No input yet: it waits. A backlog: two a step until it is caught up.
+  function inputsFor(s) {
+    const seat = seats[s.id];
+    if (!seat) return [];
+    const list = seat.queue.splice(0, seat.queue.length > CATCH_UP ? 2 : 1);
+    if (list.length) seat.ack = list.at(-1)[0];
+    return list;
+  }
+
   const h = 1 / P.physicsHz;
   let last = performance.now(), acc = 0, steps = 0;
   const timer = setInterval(() => {
@@ -79,9 +90,7 @@ export function startServer({ port = 8787, map = 'cave', seed = 7, lag = 0 } = {
     acc += Math.min(0.25, (now - last) / 1000);
     last = now;
     while (acc >= h) {
-      // Each step takes the next input from every player; with none waiting, the last one holds.
-      seats.forEach((seat, id) => { if (seat?.queue.length) { const [seq, inp] = seat.queue.shift(); ships[id].input = inp; seat.ack = seq; } });
-      stepSim(h);
+      stepSim(h, inputsFor);
       acc -= h;
       if (++steps % SNAP_EVERY === 0) {
         const msg = JSON.stringify({ t: 'snap', ships: encodeShips(), bullets: encodeBullets(), events, acks: seats.map((st) => st?.ack ?? 0) });

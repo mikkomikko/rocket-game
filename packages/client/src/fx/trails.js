@@ -3,7 +3,7 @@ import { BALL_IDX, WEAPONS } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { scene } from '../render/scene.js';
 import { BALL_COL, HEAVY_COL, ICE_COL } from './pools.js';
-import { B, MAXB } from '@rocket-duel/shared/bullets.js';
+import { B, BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
 import { ENEMY_RED } from '../maps/starship/constants.js';
 import { views } from '../ships/view.js';
 
@@ -20,8 +20,8 @@ export const TR = {
   r: new Float32Array(MAXT), g: new Float32Array(MAXT), b: new Float32Array(MAXT), cursor: 0,
 };
 export const trailGeo = new THREE.BufferGeometry();
-trailGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array((MAXT + MAXB) * 18), 3));
-trailGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array((MAXT + MAXB) * 18), 3));
+trailGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array((MAXT + BULLET_SLOTS) * 18), 3));
+trailGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array((MAXT + BULLET_SLOTS) * 18), 3));
 const trailMesh = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
 trailMesh.frustumCulled = false;
 trailMesh.position.z = 1.9;

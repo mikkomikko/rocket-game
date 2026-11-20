@@ -7,8 +7,8 @@ import { onSim, quietly } from '../src/events.js';
 import { seedRandom } from '../src/random.js';
 import { ships } from '../src/ships/ship.js';
 import { damage, moveShip, respawn } from '../src/ships/physics.js';
-import { cycleWeapon } from '../src/ships/weapons.js';
-import { B, clearBullets } from '../src/bullets.js';
+import { cycleWeapon, fire } from '../src/ships/weapons.js';
+import { B, clearBullets, MAXB, onPredictedShot } from '../src/bullets.js';
 import { stepSim } from '../src/sim.js';
 
 const H = 1 / 120;
@@ -106,6 +106,20 @@ describe('the duel runs without a browser', () => {
     game.predicting = false;
     expect(FIELDS.map((f) => s[f])).toEqual(server);
     expect(counts.fired || 0).toBe(fired);   // replays are silent
+  });
+
+  it('sends shots fired while predicting to the browser, not into the pool', () => {
+    const shots = [];
+    onPredictedShot((...args) => shots.push(args));
+    const s = ships[0], ammo = s.ammo;
+    game.predicting = true;
+    quietly(() => fire(s));
+    game.predicting = false;
+    expect(shots).toHaveLength(1);
+    expect(shots[0][0]).toBe(0);   // owner
+    expect(B.on.slice(0, MAXB).every((v) => v === 0)).toBe(true);
+    expect(s.ammo).toBeLessThan(ammo);   // ammo and cooldown still count, for the replay
+    onPredictedShot(null);
   });
 
   it('plays out the same way twice with the same seed and inputs', () => {

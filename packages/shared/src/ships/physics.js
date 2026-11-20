@@ -174,10 +174,12 @@ export function moveShip(s, h) {
   return s.alive;
 }
 
+// The pilot holds fire, the gun is ready and there's ammo for the weapon (or none is needed).
+export const canFire = (s) => s.input.fire && s.fireCd <= 0 && (s.ammo >= WEAPONS[s.weapon].cost || s.minigunT > 0 || (isPractice() && PR.infiniteAmmo));
+
 export function updateShip(s, h) {
   if (!moveShip(s, h)) return;
-  const inp = s.input;
-  if (inp.fire && s.fireCd <= 0 && (s.ammo >= WEAPONS[s.weapon].cost || s.minigunT > 0 || (isPractice() && PR.infiniteAmmo))) fire(s);
+  if (canFire(s)) fire(s);
   stepBigLaser(s, h);
 }
 

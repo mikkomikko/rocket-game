@@ -1,13 +1,13 @@
 import { P, WEAPONS } from '@rocket-duel/shared/config.js';
 import { clamp } from '@rocket-duel/shared/math.js';
 import { game } from '@rocket-duel/shared/state.js';
-import { carve } from '@rocket-duel/shared/level/mask.js';
+import { carve, solidAt } from '@rocket-duel/shared/level/mask.js';
 import { quietly, simEvent } from '@rocket-duel/shared/events.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
-import { moveShip } from '@rocket-duel/shared/ships/physics.js';
-import { cycleWeapon } from '@rocket-duel/shared/ships/weapons.js';
-import { B, MAXB } from '@rocket-duel/shared/bullets.js';
-import { applyBullets, applyShips, decodeArgs } from '@rocket-duel/shared/net.js';
+import { canFire, moveShip } from '@rocket-duel/shared/ships/physics.js';
+import { cycleWeapon, fire } from '@rocket-duel/shared/ships/weapons.js';
+import { B, BULLET_SLOTS, MAXB, onPredictedShot, PREDICTED_SLOTS } from '@rocket-duel/shared/bullets.js';
+import { applyShips, BULLET_ROW, decodeArgs } from '@rocket-duel/shared/net.js';
 import { setMode } from '../game/modes.js';
 import { stage } from '../render/scene.js';
 import { removeBoxes } from '../systems/boxes.js';
@@ -19,7 +19,9 @@ import { removeBoxes } from '../systems/boxes.js';
  *
  * Prediction: the page flies its own ship straight away with the shared physics, one numbered input per
  * step. Each snapshot says which input the server reached; the page takes the server's ship and replays
- * the newer inputs on top. Whatever still differs (a bump, recoil) is eased in rather than jumped to.
+ * the newer inputs on top. Whatever still differs (a bump) is eased in rather than jumped to.
+ * Its own shots are predicted too: the flash, sound and bullet show at once, in the bullet slots after
+ * MAXB, until the server's bullet fired by the same input arrives and takes over.
  * ------------------------------------------------------------------ */
 // Tuning that stays the viewer's own: camera, looks, sound and input. Everything else comes from the server.
 const LOCAL_KEYS = ['zoom', 'cameraLag', 'lookahead', 'split', 'showTrajectory', 'trajectorySeconds', 'showHull',
@@ -28,6 +30,9 @@ export const net = { online: false, id: 0, ws: null, snapAt: 0, gap: 1000 / 30, 
 const history = [];   // [seq, input] the server hasn't confirmed yet
 let outbox = [];      // inputs not sent yet
 const corr = [0, 1].map(() => ({ x: 0, y: 0, a: 0 }));   // prediction error still being eased out, per ship
+let freshStep = false, shotCursor = 0;   // freshStep: predicting a step for the first time (not a replay)
+const hidden = new Set();       // input numbers of shots we already showed ending (they hit a wall here first)
+const hiddenSlots = new Set();  // server slots holding those shots, kept out of sight
 
 const setStatus = (text) => { document.querySelector('.sub').textContent = text; };
 const send = (m) => { if (net.ws && net.ws.readyState === WebSocket.OPEN) net.ws.send(JSON.stringify(m)); };
@@ -59,11 +64,57 @@ function welcome(m) {
   setStatus(`Online: you are Player ${m.id + 1}. Steer with WASD or the arrows.`);
 }
 
-function predict(s, inp, h) {
+function predict(s, inp, h, fresh) {
   s.input = inp;
   game.predicting = true;
-  quietly(() => moveShip(s, h));
+  let canAct = false;
+  quietly(() => { canAct = moveShip(s, h); });
+  // A fresh step shows its shot (flash, sound, bullet); a replay only keeps ammo, cooldown and recoil right.
+  // The Big laser waits for the server.
+  if (canAct && canFire(s) && WEAPONS[s.weapon].id !== 'laser') {
+    freshStep = fresh;
+    if (fresh) fire(s); else quietly(() => fire(s));
+    freshStep = false;
+  }
   game.predicting = false;
+}
+onPredictedShot((owner, x, y, vx, vy, life, kind) => {
+  if (!freshStep) return;
+  for (let k = 0; k < PREDICTED_SLOTS; k++) {
+    const i = MAXB + (shotCursor + k) % PREDICTED_SLOTS;
+    if (B.on[i]) continue;
+    B.on[i] = 1; B.owner[i] = owner; B.x[i] = x; B.y[i] = y; B.vx[i] = vx; B.vy[i] = vy; B.life[i] = life; B.kind[i] = kind;
+    B.tx[i] = x; B.ty[i] = y; B.tt[i] = game.time; B.seq[i] = net.seq;
+    shotCursor = (i - MAXB + 1) % PREDICTED_SLOTS;
+    return;
+  }
+});
+function endShot(i) { simEvent('bulletEnd', i); B.on[i] = 0; }
+
+// The server's bullets replace ours. A predicted shot hands its trail to the server's copy of it; one the
+// server has already passed without a copy (it didn't fire it, or the shot ended at once) goes away.
+function applyBullets(rows, ack) {
+  const seen = new Uint8Array(MAXB);
+  for (let k = 0; k < rows.length; k += BULLET_ROW) {
+    const [i, x, y, vx, vy, kind, owner, seq] = rows.slice(k, k + BULLET_ROW);
+    const mine = owner === net.id;
+    if (mine && (hiddenSlots.has(i) || hidden.has(seq))) { hiddenSlots.add(i); B.on[i] = 0; continue; }
+    seen[i] = 1;
+    if (mine && !B.on[i]) {
+      for (let p = MAXB; p < BULLET_SLOTS; p++) {
+        if (!B.on[p] || B.seq[p] !== seq) continue;
+        B.tx[i] = B.tx[p]; B.ty[i] = B.ty[p]; B.tt[i] = B.tt[p]; B.kind[i] = kind; B.on[i] = 1;
+        B.on[p] = 0;
+        break;
+      }
+    }
+    if (!B.on[i] || B.kind[i] !== kind) { B.tx[i] = x; B.ty[i] = y; B.tt[i] = game.time; }
+    B.on[i] = 1; B.x[i] = x; B.y[i] = y; B.vx[i] = vx; B.vy[i] = vy;
+    B.kind[i] = kind; B.owner[i] = owner; B.seq[i] = seq; B.life[i] = 1;
+  }
+  for (let i = 0; i < MAXB; i++) if (!seen[i]) B.on[i] = 0;
+  for (let p = MAXB; p < BULLET_SLOTS; p++) if (B.on[p] && B.seq[p] <= ack) endShot(p);
+  for (const seq of hidden) if (seq < ack - 600) hidden.delete(seq);
 }
 
 function snap(m) {
@@ -76,7 +127,7 @@ function snap(m) {
 
   // Our own ship: the server's state, then every input it hasn't applied yet.
   while (history.length && history[0][0] <= m.acks[net.id]) history.shift();
-  if (me.alive && me.active) for (const [, inp] of history) predict(me, inp, h);
+  if (me.alive && me.active) for (const [, inp] of history) predict(me, inp, h, false);
   const c = corr[net.id];
   if (was.alive && me.alive && Math.hypot(was.x - me.x, was.y - me.y) < 150) {
     // Keep drawing from where the ship was, and ease out the difference.
@@ -91,12 +142,13 @@ function snap(m) {
     if (type === 'carve') carve(...args);
     else if (type === 'bulletEnd') {
       const [i, x, y] = args;
+      if (hiddenSlots.delete(i) || !B.on[i]) continue;   // hidden, or it started and ended between snapshots
       B.x[i] = x; B.y[i] = y;
-      simEvent('bulletEnd', i);
-      B.on[i] = 0;
-    } else simEvent(type, ...decodeArgs(args));
+      endShot(i);
+    } else if (type === 'fired' && args[0]?.ship === net.id) continue;   // already shown when we predicted it
+    else simEvent(type, ...decodeArgs(args));
   }
-  applyBullets(m.bullets, game.time);
+  applyBullets(m.bullets, m.acks[net.id]);
   net.snapAt = performance.now();
 }
 
@@ -126,7 +178,7 @@ export function switchWeapon(s) {
   if (net.online) send({ t: 'cycle' }); else cycleWeapon(s);
 }
 
-// One step online: our ship moves now (predicted); bullets keep flying until the next snapshot corrects them.
+// One step online: our ship moves and fires now (predicted); bullets keep flying until the next snapshot corrects them.
 export function netStep(h) {
   game.time += h;
   game.matchClock += h;
@@ -136,10 +188,12 @@ export function netStep(h) {
   if (history.length > 600) history.shift();
   outbox.push(inp);
   me.px = me.x; me.py = me.y; me.pa = me.a;
-  if (me.alive && me.active) predict(me, inp, h);
-  for (let i = 0; i < MAXB; i++) {
+  if (me.alive && me.active) predict(me, inp, h, true);
+  for (let i = 0; i < BULLET_SLOTS; i++) {
     if (!B.on[i]) continue;
     B.vy[i] -= P.gravity * P.bulletGravity * WEAPONS[B.kind[i]].grav * h;
     B.x[i] += B.vx[i] * h; B.y[i] += B.vy[i] * h;
+    // A predicted shot stops at walls and when its time runs out; the server's copy of it then stays hidden.
+    if (i >= MAXB && ((B.life[i] -= h) <= 0 || solidAt(B.x[i], B.y[i]))) { hidden.add(B.seq[i]); endShot(i); }
   }
 }

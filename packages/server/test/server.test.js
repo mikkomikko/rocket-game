@@ -60,25 +60,28 @@ describe('the online duel server', () => {
 
   it('flies a ship from its player\'s input', async () => {
     const y0 = lastSnap(a).ships[0][0][1];
-    a.input(0, 1, false);
-    await wait(600);
-    a.input(0, 0, false);
+    a.input(0, 1, false, 72);   // 0.6 s of thrust: one input per step
+    await wait(800);
     const [vals] = lastSnap(b).ships[0];   // the other player sees it too
     expect(vals[1]).toBeGreaterThan(y0 + 20);
+  });
+
+  it('moves a ship only as far as its player\'s inputs go', async () => {
+    await wait(300);   // every input sent so far is used up
+    const before = lastSnap(a).ships[0][0];
+    await wait(300);
+    expect(lastSnap(a).ships[0][0]).toEqual(before);   // no new inputs: the ship waits
   });
 
   it('applies numbered inputs in order and acknowledges them', async () => {
     const last = a.input(0.5, 0, false, 30);   // a quarter second of steps at once
     await a.next((m) => m.t === 'snap' && m.acks[0] === last);
-    a.input(0, 0, false);
   });
 
   it('passes on shots, craters and weapon switches as events', async () => {
     b.send({ t: 'cycle' });
-    b.input(0, 0.6, true);
-    await wait(1500);
-    b.input(0, 0, false);
-    await wait(300);
+    b.input(0, 0.6, true, 180);   // 1.5 s of firing
+    await wait(1800);
     const events = a.msgs.filter((m) => m.t === 'snap').flatMap((m) => m.events);
     const types = new Set(events.map((e) => e[0]));
     expect(types.has('fired')).toBe(true);
@@ -86,6 +89,14 @@ describe('the online duel server', () => {
     expect(types.has('carve')).toBe(true);
     const fired = events.find((e) => e[0] === 'fired');
     expect(fired[1]).toEqual({ ship: 1 });
+    // Every shot carries the number of the input that fired it (row: slot, x, y, vx, vy, kind, owner, seq).
+    const rows = a.msgs.filter((m) => m.t === 'snap').flatMap((m) => {
+      const out = [];
+      for (let k = 0; k < m.bullets.length; k += 8) out.push(m.bullets.slice(k, k + 8));
+      return out;
+    }).filter((r) => r[6] === 1);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) expect(r[7]).toBeGreaterThan(0);
   });
 
   it('gives a late joiner every crater so far', async () => {
