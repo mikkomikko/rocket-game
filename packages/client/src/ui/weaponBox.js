@@ -2,10 +2,10 @@ import { reducedMotion } from '../config.js';
 import { isSolo, P, WEAPONS } from '@rocket-duel/shared/config.js';
 import { clamp } from '@rocket-duel/shared/math.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
-import { cycleWeapon } from '@rocket-duel/shared/ships/weapons.js';
 import { bigFree } from '@rocket-duel/shared/ships/bigLaser.js';
 import { cams, viewH } from '../render/camera.js';
 import { views } from '../ships/view.js';
+import { switchWeapon } from '../net/online.js';
 
 /* ------------------------------------------------------------------ *
  * Weapon box: rounded square next to the ship; old icon slides out left, new one slides in from the right
@@ -23,7 +23,7 @@ const wbox = [0, 1].map((i) => ({ el: document.getElementById('wsel' + i), until
 const wbtns = [...document.querySelectorAll('.hud-wbtn')];
 wbtns.forEach((b) => b.addEventListener('click', () => {
   const i = Number(b.dataset.p);
-  cycleWeapon(ships[isSolo() ? 0 : i]);
+  switchWeapon(ships[isSolo() ? 0 : i]);
 }));
 export function updateWeaponButtons() {
   for (const b of wbtns) {

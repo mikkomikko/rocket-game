@@ -1,0 +1,89 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import WebSocket from 'ws';
+import { startServer } from '../src/server.js';
+
+let server;
+beforeAll(() => { server = startServer({ port: 0, map: 'cave', seed: 7 }); });
+afterAll(() => server.close());
+
+// A test player: keeps every message, and can wait for one that matches.
+function join() {
+  const ws = new WebSocket(`ws://localhost:${server.port()}`);
+  const msgs = [];
+  const waiters = [];
+  ws.on('message', (d) => {
+    const m = JSON.parse(d);
+    msgs.push(m);
+    for (const w of [...waiters]) if (w.test(m)) { waiters.splice(waiters.indexOf(w), 1); w.resolve(m); }
+  });
+  const next = (test, ms = 3000) => new Promise((resolve, reject) => {
+    const found = msgs.find(test);
+    if (found) return resolve(found);
+    const w = { test, resolve };
+    waiters.push(w);
+    setTimeout(() => reject(new Error('timed out waiting for a message')), ms);
+  });
+  const send = (m) => ws.send(JSON.stringify(m));
+  const opened = new Promise((r) => ws.on('open', r));
+  return { ws, msgs, next, send, opened };
+}
+const lastSnap = (p) => p.msgs.filter((m) => m.t === 'snap').at(-1);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+describe('the online duel server', () => {
+  let a, b;
+  it('seats two players and turns a third away', async () => {
+    a = join(); await a.opened;
+    const wa = await a.next((m) => m.t === 'welcome');
+    b = join(); await b.opened;
+    const wb = await b.next((m) => m.t === 'welcome');
+    expect([wa.id, wb.id]).toEqual([0, 1]);
+    expect(wa.P.map).toBe('cave');
+    const c = join(); await c.opened;
+    await c.next((m) => m.t === 'full');
+  });
+
+  it('sends snapshots about 30 times a second', async () => {
+    const n0 = a.msgs.filter((m) => m.t === 'snap').length;
+    await wait(500);
+    const n = a.msgs.filter((m) => m.t === 'snap').length - n0;
+    expect(n).toBeGreaterThan(10);
+    expect(n).toBeLessThan(20);
+  });
+
+  it('flies a ship from its player\'s input', async () => {
+    const y0 = lastSnap(a).ships[0][0][1];
+    a.send({ t: 'input', turn: 0, thrust: 1, fire: false });
+    await wait(600);
+    a.send({ t: 'input', turn: 0, thrust: 0, fire: false });
+    const [vals] = lastSnap(b).ships[0];   // the other player sees it too
+    expect(vals[1]).toBeGreaterThan(y0 + 20);
+  });
+
+  it('passes on shots, craters and weapon switches as events', async () => {
+    b.send({ t: 'cycle' });
+    b.send({ t: 'input', turn: 0, thrust: 0.6, fire: true });
+    await wait(1500);
+    b.send({ t: 'input', turn: 0, thrust: 0, fire: false });
+    await wait(300);
+    const events = a.msgs.filter((m) => m.t === 'snap').flatMap((m) => m.events);
+    const types = new Set(events.map((e) => e[0]));
+    expect(types.has('fired')).toBe(true);
+    expect(types.has('weaponChanged')).toBe(true);
+    expect(types.has('carve')).toBe(true);
+    const fired = events.find((e) => e[0] === 'fired');
+    expect(fired[1]).toEqual({ ship: 1 });
+  });
+
+  it('gives a late joiner every crater so far', async () => {
+    const carved = a.msgs.filter((m) => m.t === 'snap').flatMap((m) => m.events).filter((e) => e[0] === 'carve').length;
+    b.ws.close();
+    await wait(200);
+    expect(lastSnap(a).ships[1][0][12]).toBe(false);   // 'active': the empty seat's ship is gone
+    const late = join(); await late.opened;
+    const w = await late.next((m) => m.t === 'welcome');
+    expect(w.id).toBe(1);
+    expect(w.carves.length).toBeGreaterThanOrEqual(carved);
+    late.ws.close();
+  });
+});

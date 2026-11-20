@@ -127,6 +127,11 @@ function makeBoxMesh(kind) {
   BOX_GROUP.add(g);
   return { g, ring, box };
 }
+// Takes every box off the map (online play has no boxes yet).
+export function removeBoxes() {
+  for (const b of BX) { b.g.removeFromParent(); b.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
+  BX = [];
+}
 export function resetBoxes() {
   for (const b of BX) { b.g.removeFromParent(); b.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
   BX = [];

@@ -7,13 +7,15 @@ import { startLoop } from './loop.js';
 import { setMode } from './game/modes.js';
 import { applySkins } from './ui/skins.js';
 import { openStart, setup } from './ui/startScreen.js';
+import { connect } from './net/online.js';
 
 /* ------------------------------------------------------------------ *
  * Start
  * ------------------------------------------------------------------ */
 applySkins(setup.skins);
 setMode(location.hash.slice(1), true);
-openStart();
+const server = new URLSearchParams(location.search).get('server');
+if (server) connect(server); else openStart();
 window.__duelStarted = true;
 window.__duel = { P, PR, ships, level, game, solidAt, setMode };
 startLoop();

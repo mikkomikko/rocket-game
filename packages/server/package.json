@@ -1,0 +1,16 @@
+{
+  "name": "@rocket-duel/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "vitest run --environment node"
+  },
+  "dependencies": {
+    "@rocket-duel/shared": "*",
+    "ws": "8.23.0"
+  },
+  "devDependencies": {
+    "vitest": "5.1.1"
+  }
+}

@@ -1,0 +1,86 @@
+import { WebSocketServer } from 'ws';
+import { DEFAULTS, P } from '@rocket-duel/shared/config.js';
+import { clamp } from '@rocket-duel/shared/math.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { onLevel } from '@rocket-duel/shared/level/mask.js';
+import { generateMap } from '@rocket-duel/shared/level/generate.js';
+import { MAPS } from '@rocket-duel/shared/level/terrain.js';
+import { onAnySim } from '@rocket-duel/shared/events.js';
+import { seedRandom } from '@rocket-duel/shared/random.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
+import { respawn } from '@rocket-duel/shared/ships/physics.js';
+import { cycleWeapon } from '@rocket-duel/shared/ships/weapons.js';
+import { B, clearBullets } from '@rocket-duel/shared/bullets.js';
+import { stepSim } from '@rocket-duel/shared/sim.js';
+import { encodeArgs, encodeBullets, encodeShips, SNAP_EVERY } from '@rocket-duel/shared/net.js';
+
+// Maps without a theme of their own (no creatures or enemies): the ones the server can run so far.
+export const ONLINE_MAPS = Object.keys(MAPS).filter((k) => !MAPS[k].theme);
+
+/* One duel for up to two players. The server owns the match: it runs the simulation from the players'
+ * inputs and sends every browser what happened. The process holds one match, since the shared
+ * simulation keeps its state in modules. */
+export function startServer({ port = 8787, map = 'cave', seed = 7 } = {}) {
+  if (!ONLINE_MAPS.includes(map)) throw new Error(`Online play supports these maps: ${ONLINE_MAPS.join(', ')}`);
+  Object.assign(P, structuredClone(DEFAULTS), { map, seed });
+  game.mode = 'duel'; game.time = 0; game.matchClock = 0;
+  generateMap();
+  clearBullets();
+  seedRandom(seed);
+  for (const s of ships) { s.active = false; s.alive = false; s.score = 0; s.bigLaser = 1; s.beam = null; }
+
+  const carves = [];   // every crater so far, so a player who joins late sees the same cave
+  let events = [];
+  onLevel('carved', (x, y, r) => { carves.push([x, y, r]); events.push(['carve', x, y, r]); });
+  onAnySim((type, args) => {
+    // A bullet's last position travels with its end, so the browser can finish the trail where it stopped.
+    if (type === 'bulletEnd') events.push(['bulletEnd', args[0], B.x[args[0]], B.y[args[0]]]);
+    else events.push([type, ...encodeArgs(args)]);
+  });
+
+  const seats = [null, null];
+  const wss = new WebSocketServer({ port });
+  wss.on('connection', (ws) => {
+    const id = seats.indexOf(null);
+    if (id < 0) { ws.send(JSON.stringify({ t: 'full' })); ws.close(); return; }
+    seats[id] = ws;
+    const s = ships[id];
+    s.input = { turn: 0, thrust: 0, fire: false };
+    s.score = 0;
+    respawn(s);
+    ws.send(JSON.stringify({ t: 'welcome', id, P, carves }));
+    ws.on('message', (data) => {
+      let m;
+      try { m = JSON.parse(data); } catch { return; }
+      if (m.t === 'input') s.input = { turn: clamp(+m.turn || 0, -1, 1), thrust: clamp(+m.thrust || 0, 0, 1), fire: !!m.fire };
+      else if (m.t === 'cycle') cycleWeapon(s);
+    });
+    ws.on('close', () => {
+      seats[id] = null;
+      s.active = false; s.alive = false; s.beam = null;
+      s.input = { turn: 0, thrust: 0, fire: false };
+    });
+  });
+
+  const h = 1 / P.physicsHz;
+  let last = performance.now(), acc = 0, steps = 0;
+  const timer = setInterval(() => {
+    const now = performance.now();
+    acc += Math.min(0.25, (now - last) / 1000);
+    last = now;
+    while (acc >= h) {
+      stepSim(h);
+      acc -= h;
+      if (++steps % SNAP_EVERY === 0) {
+        const msg = JSON.stringify({ t: 'snap', ships: encodeShips(), bullets: encodeBullets(), events });
+        events = [];
+        for (const ws of seats) if (ws && ws.readyState === ws.OPEN) ws.send(msg);
+      }
+    }
+  }, 2);
+
+  return {
+    port: () => wss.address().port,
+    close: () => new Promise((resolve) => { clearInterval(timer); for (const ws of seats) ws?.terminate(); wss.close(() => resolve()); }),
+  };
+}

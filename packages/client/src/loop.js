@@ -23,10 +23,11 @@ import { field } from './render/field.js';
 import { stepEffects } from './fx/effects.js';
 import { views } from './ships/view.js';
 import { stepSim } from '@rocket-duel/shared/sim.js';
+import { net, netAlpha, netStep, sendInput } from './net/online.js';
 
 // The fixed-step simulation (step) and the render loop (frame).
 function step(h) {
-  stepSim(h);
+  if (net.online) netStep(h); else stepSim(h);
   stepEffects(h);
   stepParticles(h);
   stepTerrainBits(h);
@@ -48,6 +49,7 @@ function frame(now) {
   if (fpsAcc > 0.5) { mon.fps = Math.round(fpsFrames / fpsAcc); fpsAcc = 0; fpsFrames = 0; }
 
   readInputs();
+  if (net.online) sendInput();
   const h = 1 / P.physicsHz;
   if (!game.paused && !game.picking) {
     acc += dt * P.timeScale;
@@ -55,7 +57,7 @@ function frame(now) {
     while (acc >= h && n < 40) { step(h); acc -= h; n++; }
     if (n >= 40) acc = 0;
   }
-  const alpha = clamp(acc / h, 0, 1);
+  const alpha = net.online ? netAlpha() : clamp(acc / h, 0, 1);
 
   if (field.dirty) { field.tex.needsUpdate = true; field.dirty = false; }
   for (const s of ships) {

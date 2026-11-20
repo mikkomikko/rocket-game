@@ -2,13 +2,13 @@ import { isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { clamp } from '@rocket-duel/shared/math.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
-import { cycleWeapon } from '@rocket-duel/shared/ships/weapons.js';
 import { restartMatch } from './game/modes.js';
 import { togglePanel, togglePause, toggleUI } from './ui/header.js';
 import { nextMap, picker, pickerKey } from './ui/mapPicker.js';
 import { pane } from './ui/tuningPanel.js';
 import { openStart, startEl, startKey } from './ui/startScreen.js';
 import { activeMap } from './maps/index.js';
+import { switchWeapon } from './net/online.js';
 
 /* ------------------------------------------------------------------ *
  * Input: keyboard and gamepads merged into one action state per player
@@ -34,7 +34,7 @@ window.addEventListener('keydown', (e) => {
   }
   if ((e.code === 'KeyS' || e.code === 'ArrowDown') && !e.repeat) {
     e.preventDefault();
-    if (!game.paused) cycleWeapon(ships[isSolo() || e.code === 'KeyS' ? 0 : 1]);
+    if (!game.paused) switchWeapon(ships[isSolo() || e.code === 'KeyS' ? 0 : 1]);
     return;
   }
   if (e.code === 'KeyP' && !e.repeat) { e.preventDefault(); togglePause(); }
@@ -76,7 +76,7 @@ export function readInputs() {
       fireBtn = fireBtn || btn(2) || btn(1) || btn(5);
       // Y (or the left bumper) switches weapon, once per press
       const sw = btn(3) || btn(4);
-      if (sw && !s.padSwitch && !game.paused) cycleWeapon(isSolo() ? ships[0] : s);
+      if (sw && !s.padSwitch && !game.paused) switchWeapon(isSolo() ? ships[0] : s);
       s.padSwitch = sw;
     }
     s.input.turn = turn;

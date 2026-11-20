@@ -9,6 +9,7 @@
     "dev": "npm run dev -w @rocket-duel/client",
     "build": "npm run build -w @rocket-duel/client",
     "preview": "npm run preview -w @rocket-duel/client",
-    "test": "npm test -w @rocket-duel/shared"
+    "test": "npm test -w @rocket-duel/shared -w @rocket-duel/server",
+    "server": "npm start -w @rocket-duel/server"
   }
 }
