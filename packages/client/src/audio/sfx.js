@@ -1,8 +1,8 @@
 import { P } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { clamp } from '@rocket-duel/shared/math.js';
-import { ships } from '../ships/ship.js';
-import { BIG } from '../ships/bigLaser.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
+import { BIG } from '@rocket-duel/shared/ships/bigLaser.js';
 import { startEl } from '../ui/startScreen.js';
 
 /* ------------------------------------------------------------------ *

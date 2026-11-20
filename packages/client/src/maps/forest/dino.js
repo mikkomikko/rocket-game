@@ -3,8 +3,9 @@ import { P } from '@rocket-duel/shared/config.js';
 import { approach, clamp } from '@rocket-duel/shared/math.js';
 import { level, solidAt, W } from '@rocket-duel/shared/level/mask.js';
 import { scene } from '../../render/scene.js';
-import { shapeGeo, SHIP_RADIUS, ships } from '../../ships/ship.js';
-import { addShake, kill } from '../../ships/physics.js';
+import { shapeGeo, views } from '../../ships/view.js';
+import { SHIP_RADIUS, ships } from '@rocket-duel/shared/ships/ship.js';
+import { addShake, kill } from '@rocket-duel/shared/ships/physics.js';
 import { DUST, WHITE } from '../../fx/pools.js';
 import { emit } from '../../fx/particles.js';
 import { emitSmoke } from '../../fx/smoke.js';
@@ -110,7 +111,7 @@ const dinoMouth = () => ({ x: DINO.x + DINO.dir * 46 * DINO_S, zx: DINO.x + DINO
 function eatShip(s, m) {
   for (let i = 0; i < 26; i++) {
     const a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 160;
-    emit(m.zx, m.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.3 + Math.random() * 0.5, i % 3 ? s.color : WHITE, 0.4, 2 + Math.random() * 4);
+    emit(m.zx, m.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.3 + Math.random() * 0.5, i % 3 ? views[s.id].color : WHITE, 0.4, 2 + Math.random() * 4);
   }
   kill(s, true);
   addShake(s, 1.4);

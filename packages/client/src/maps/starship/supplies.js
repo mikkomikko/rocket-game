@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { P } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { glowMat } from '../../render/scene.js';
-import { ships } from '../../ships/ship.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { WHITE } from '../../fx/pools.js';
 import { emit } from '../../fx/particles.js';
 import { canvasTex } from '../floors/floors.js';

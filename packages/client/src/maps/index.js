@@ -7,6 +7,7 @@ import { forest } from './forest/index.js';
 import { desert } from './desert/index.js';
 import { floors } from './floors/index.js';
 import { ship } from './starship/index.js';
+import { setMapRules } from '@rocket-duel/shared/maps.js';
 
 /* ------------------------------------------------------------------ *
  * Map themes. Each theme (level.theme) is one object; the core asks the
@@ -44,6 +45,7 @@ let themes = null;   // built on first use, after every map module has loaded
 const table = () => (themes ??= { rock, forest, desert, floors, ship });
 export const activeMap = () => table()[level.theme] || rock;
 export const allMaps = () => Object.values(table());
+setMapRules(activeMap);   // the shared simulation asks the active map through this
 
 export function groundRGB(y) { return activeMap().ground || rowColor[clamp(Math.floor(H - y), 0, H - 1)]; }
 onLevel('carved', (x, y, r) => activeMap().carved?.(x, y, r));

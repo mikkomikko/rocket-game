@@ -1,10 +1,11 @@
 import { reducedMotion } from '../config.js';
 import { isSolo, P, WEAPONS } from '@rocket-duel/shared/config.js';
 import { clamp } from '@rocket-duel/shared/math.js';
-import { ships } from '../ships/ship.js';
-import { cycleWeapon } from '../ships/weapons.js';
-import { bigFree } from '../ships/bigLaser.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
+import { cycleWeapon } from '@rocket-duel/shared/ships/weapons.js';
+import { bigFree } from '@rocket-duel/shared/ships/bigLaser.js';
 import { cams, viewH } from '../render/camera.js';
+import { views } from '../ships/view.js';
 
 /* ------------------------------------------------------------------ *
  * Weapon box: rounded square next to the ship; old icon slides out left, new one slides in from the right
@@ -16,8 +17,8 @@ const WICON = {
   ball: () => `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12" fill="#ff5fd2" opacity="0.3"/><g stroke="#ff5fd2" stroke-width="1.8" opacity="0.75"><path d="M5 16 H27 M10.5 6.5 L21.5 25.5 M21.5 6.5 L10.5 25.5"/></g><circle cx="16" cy="16" r="12" fill="none" stroke="#ff5fd2" stroke-width="2.4"/><circle cx="11.5" cy="10.5" r="2.4" fill="#fff" opacity="0.8"/></svg>`,
   laser: (c) => `<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="10.5" width="8" height="11" rx="2" fill="#6b7290"/><rect x="9" y="11.5" width="21" height="9" rx="4.5" fill="${c}" opacity="0.55"/><rect x="9" y="14.4" width="21" height="3.2" rx="1.6" fill="#ffffff"/><circle cx="10" cy="16" r="3.4" fill="#ffffff"/></svg>`,
 };
-const weaponIcon = (s, k) => WICON[WEAPONS[k].id](s.hex);
-const weaponColor = (s, k) => WEAPONS[k].color || s.hex;
+const weaponIcon = (s, k) => WICON[WEAPONS[k].id](views[s.id].hex);
+const weaponColor = (s, k) => WEAPONS[k].color || views[s.id].hex;
 const wbox = [0, 1].map((i) => ({ el: document.getElementById('wsel' + i), until: 0, cur: null }));
 const wbtns = [...document.querySelectorAll('.hud-wbtn')];
 wbtns.forEach((b) => b.addEventListener('click', () => {
@@ -57,8 +58,9 @@ export function updateWeaponBoxes(rects) {
     const show = box.until > now && s.alive && s.active && r;
     if (!show) { if (box.el.classList.contains('on')) box.el.classList.remove('on'); continue; }
     const cam = cams[i];
-    const sx = r.x + (s.group.position.x - (cam.position.x + cam.left)) / (cam.right - cam.left) * r.w;
-    const sy = r.y + (s.group.position.y - (cam.position.y + cam.bottom)) / (cam.top - cam.bottom) * r.h;
+    const g = views[i].group;
+    const sx = r.x + (g.position.x - (cam.position.x + cam.left)) / (cam.right - cam.left) * r.w;
+    const sy = r.y + (g.position.y - (cam.position.y + cam.bottom)) / (cam.top - cam.bottom) * r.h;
     const off = 18 * P.shipSize * P.zoom + 10;
     let left = sx + off, top = viewH - sy - 20;
     if (left + 40 > r.x + r.w - 4) left = sx - off - 40;   // flip to the left side near the view edge

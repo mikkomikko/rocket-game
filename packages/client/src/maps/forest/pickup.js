@@ -1,15 +1,16 @@
 import * as THREE from 'three';
-import { P } from '@rocket-duel/shared/config.js';
+import { MINIGUN_TIME, P } from '@rocket-duel/shared/config.js';
 import { H, level, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, scene } from '../../render/scene.js';
-import { shapeGeo, ships } from '../../ships/ship.js';
+import { shapeGeo, views } from '../../ships/view.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { WHITE } from '../../fx/pools.js';
 import { emit } from '../../fx/particles.js';
 import { topBelow } from './plants.js';
 import { showToast } from '../floors/floors.js';
 
 // The minigun pickup: floats on the middle island. Fly into it for 30 s of very fast fire.
-export const MINIGUN_TIME = 30, MINIGUN_RATE = 4, MINIGUN_BACK = 20;
+const MINIGUN_BACK = 20;
 const PU = { active: false, x: 0, y: 0, respawn: 0 };
 const puGroup = new THREE.Group();
 puGroup.visible = false;
@@ -48,8 +49,8 @@ for (const s of ships) {
   }
   g.position.z = 0.05;
   g.visible = false;
-  s.group.add(g);
-  s.gunMesh = g;
+  views[s.id].group.add(g);
+  views[s.id].gunMesh = g;
 }
 const PU_SPARK = new THREE.Color('#ffe066');
 export function resetPickup() {
@@ -86,5 +87,5 @@ export function drawPickup(now) {
     PU.ring.material.opacity = 0.55 + 0.3 * Math.sin(now / 200);
     PU.gun.rotation.z = Math.sin(now / 700) * 0.15;
   }
-  for (const s of ships) s.gunMesh.visible = s.alive && s.minigunT > 0;
+  for (const s of ships) views[s.id].gunMesh.visible = s.alive && s.minigunT > 0;
 }

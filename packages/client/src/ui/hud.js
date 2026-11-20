@@ -1,10 +1,9 @@
-import { DEG, isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
+import { DEG, isPractice, isSolo, MINIGUN_TIME, P } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { clamp, wrapAngle } from '@rocket-duel/shared/math.js';
 import { level } from '@rocket-duel/shared/level/mask.js';
 import { MAPS } from '@rocket-duel/shared/level/terrain.js';
-import { ships } from '../ships/ship.js';
-import { MINIGUN_TIME } from '../maps/forest/pickup.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { appEl } from './header.js';
 import { activeMap } from '../maps/index.js';
 

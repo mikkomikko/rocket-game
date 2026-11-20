@@ -1,5 +1,5 @@
 import { clamp } from '@rocket-duel/shared/math.js';
-import { ships } from '../../ships/ship.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { buildFloors, bulletHitsRock, clearFloors, drawFloors, FL, hitBreakable, resetLava, stepFloors } from './floors.js';
 import { level } from '@rocket-duel/shared/level/mask.js';
 

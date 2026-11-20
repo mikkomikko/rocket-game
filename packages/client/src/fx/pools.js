@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BALL_COLOR, FREEZE_COLOR, WEAPONS } from '@rocket-duel/shared/config.js';
 import { scene } from '../render/scene.js';
+import { MAXB } from '@rocket-duel/shared/bullets.js';
 
 /* ------------------------------------------------------------------ *
  * Bullets and particles (fixed pools, drawn as THREE.Points)
@@ -9,12 +10,6 @@ export const FIRE = new THREE.Color('#ff8f3d'), EMBER = new THREE.Color('#ffd166
 export const ICE_COL = new THREE.Color(FREEZE_COLOR), HEAVY_COL = new THREE.Color(WEAPONS[1].color), BALL_COL = new THREE.Color(BALL_COLOR);
 export const DUST = new THREE.Color();
 
-export const MAXB = 600;
-export const B = {
-  x: new Float32Array(MAXB), y: new Float32Array(MAXB), vx: new Float32Array(MAXB), vy: new Float32Array(MAXB),
-  life: new Float32Array(MAXB), owner: new Int8Array(MAXB), on: new Uint8Array(MAXB), kind: new Uint8Array(MAXB), cursor: 0,
-  tx: new Float32Array(MAXB), ty: new Float32Array(MAXB), tt: new Float32Array(MAXB),   // last point dropped on the trail
-};
 // Soft, round, additive points sized in world units (bullets and particles).
 export const pointScale = { value: 1 };
 const POINT_VS = `

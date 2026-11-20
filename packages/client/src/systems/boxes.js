@@ -3,7 +3,7 @@ import { isPractice, isSolo, P, PR } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { H, level, solidAt, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, scene } from '../render/scene.js';
-import { ships } from '../ships/ship.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { WHITE } from '../fx/pools.js';
 import { emit } from '../fx/particles.js';
 import { canvasTex } from '../maps/floors/floors.js';

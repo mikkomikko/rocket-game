@@ -2,7 +2,7 @@ import './styles/index.css';
 import { P, PR } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { level, solidAt } from '@rocket-duel/shared/level/mask.js';
-import { ships } from './ships/ship.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { startLoop } from './loop.js';
 import { setMode } from './game/modes.js';
 import { applySkins } from './ui/skins.js';

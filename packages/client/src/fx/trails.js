@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { BALL_IDX, WEAPONS } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { scene } from '../render/scene.js';
-import { ships } from '../ships/ship.js';
-import { B, BALL_COL, HEAVY_COL, ICE_COL, MAXB } from './pools.js';
+import { BALL_COL, HEAVY_COL, ICE_COL } from './pools.js';
+import { B, MAXB } from '@rocket-duel/shared/bullets.js';
 import { ENEMY_RED } from '../maps/starship/constants.js';
+import { views } from '../ships/view.js';
 
 /* Fading trails: every bullet drops short ribbon pieces along its path. Each piece fades and thins on its own clock,
  * so the oldest end goes first and the trail slowly shrinks back toward the shot (and stays behind at the impact point
@@ -25,7 +26,7 @@ const trailMesh = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ vertexC
 trailMesh.frustumCulled = false;
 trailMesh.position.z = 1.9;
 scene.add(trailMesh);
-export const bulletColor = (i) => B.owner[i] >= 2 ? ENEMY_RED : B.kind[i] === 1 ? HEAVY_COL : B.kind[i] === 2 ? ICE_COL : B.kind[i] === BALL_IDX ? BALL_COL : ships[B.owner[i]].color;
+export const bulletColor = (i) => B.owner[i] >= 2 ? ENEMY_RED : B.kind[i] === 1 ? HEAVY_COL : B.kind[i] === 2 ? ICE_COL : B.kind[i] === BALL_IDX ? BALL_COL : views[B.owner[i]].color;
 // Drop a trail piece from the bullet's last trail point to where it is now (always when it ends, so the trail reaches the impact).
 export function trailPoint(i, end) {
   const dx = B.x[i] - B.tx[i], dy = B.y[i] - B.ty[i], d2 = dx * dx + dy * dy;

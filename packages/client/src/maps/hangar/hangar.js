@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mulberry32 } from '@rocket-duel/shared/math.js';
 import { H, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat } from '../../render/scene.js';
-import { shapeGeo } from '../../ships/ship.js';
+import { shapeGeo } from '../../ships/view.js';
 import { canvasTex, girderMat, stripedPlane } from '../floors/floors.js';
 import { backWallMat, resetStarship, SH, SHIP_GROUP } from '../starship/starship.js';
 import { buildAmmo, buildMedkits } from '../starship/supplies.js';

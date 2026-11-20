@@ -1,16 +1,14 @@
 import * as THREE from 'three';
 import { P1HEX, P2HEX } from '../config.js';
-import { BALL_COLOR, BALL_R, FREEZE_COLOR, P } from '@rocket-duel/shared/config.js';
-import { H, solidAt, W } from '@rocket-duel/shared/level/mask.js';
+import { BALL_COLOR, BALL_R, FREEZE_COLOR } from '@rocket-duel/shared/config.js';
+import { H, W } from '@rocket-duel/shared/level/mask.js';
+import { HULL } from '@rocket-duel/shared/ships/ship.js';
 import { glowMat, scene } from '../render/scene.js';
 
 /* ------------------------------------------------------------------ *
- * Ships
+ * Ship views: everything the client draws for a ship (meshes, colours, its camera), kept apart from the
+ * ship's state in the shared package. views[s.id] belongs to ships[s.id].
  * ------------------------------------------------------------------ */
-// Hull sample points in ship-local units (nose points along +y). Collision samples these.
-const HULL = [[0, 12], [8, -8], [-8, -8], [4.5, 2], [-4.5, 2], [0, -4.5]];
-export const SHIP_RADIUS = 10;
-
 export function shapeGeo(points) {
   const s = new THREE.Shape();
   s.moveTo(points[0][0], points[0][1]);
@@ -19,7 +17,7 @@ export function shapeGeo(points) {
   return new THREE.ShapeGeometry(s);
 }
 
-function makeShip(id) {
+function makeView(id) {
   const hex = id === 0 ? P1HEX : P2HEX;
   const col = new THREE.Color(hex);
   const group = new THREE.Group();
@@ -122,34 +120,11 @@ function makeShip(id) {
   scene.add(arrow);
 
   return {
-    id, hex, color: new THREE.Color(hex), group, flame, hullMat, shadeMat, crossMat, aimGeo: lineGeo, aura, shield, traj, hullPts, arrow,
-    x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, a: 0, pa: 0, av: 0, thrust: 0,
-    hp: 100, ammo: P.ammoMax, landed: false, onPad: false, alive: true,
-    respawnT: 0, invulnT: 0, fireCd: 0, score: 0, deathX: 0, deathY: 0, active: true, lastImpact: 0, smokeAcc: 0,
-    weapon: 0, frozenT: 0, crossT: 0, ice, aim, ballT: 0, ball,
-    input: { turn: 0, thrust: 0, fire: false },
+    hex, color: new THREE.Color(hex), group, flame, hullMat, shadeMat, crossMat, aimGeo: lineGeo, aura, shield, traj, hullPts, arrow,
+    ice, aim, ball,
+    smokeAcc: 0,
     cam: { x: W / 2, y: H / 2, shake: 0 },
   };
 }
 export const TRAJ_MAX = 600;
-export const ships = [makeShip(0), makeShip(1)];
-
-const HW = HULL.map(() => [0, 0]);
-export function hullWorld(s, dx = 0, dy = 0) {
-  const c = Math.cos(s.a), sn = Math.sin(s.a), k = P.shipSize;
-  for (let i = 0; i < HULL.length; i++) {
-    const lx = HULL[i][0] * k, ly = HULL[i][1] * k;
-    HW[i][0] = s.x + dx + lx * c - ly * sn;
-    HW[i][1] = s.y + dy + lx * sn + ly * c;
-  }
-  return HW;
-}
-export function hullSolid(s, dx = 0, dy = 0) {
-  const pts = hullWorld(s, dx, dy);
-  for (const p of pts) if (solidAt(p[0], p[1])) return true;
-  return false;
-}
-export function localToWorld(s, lx, ly) {
-  const c = Math.cos(s.a), sn = Math.sin(s.a), k = P.shipSize;
-  return { x: s.x + (lx * c - ly * sn) * k, y: s.y + (lx * sn + ly * c) * k };
-}
+export const views = [makeView(0), makeView(1)];

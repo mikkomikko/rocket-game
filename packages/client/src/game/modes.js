@@ -1,9 +1,9 @@
 import { isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { stage } from '../render/scene.js';
-import { ships } from '../ships/ship.js';
-import { respawn } from '../ships/physics.js';
-import { clearBullets } from '../fx/bullets.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
+import { respawn } from '@rocket-duel/shared/ships/physics.js';
+import { clearBullets } from '@rocket-duel/shared/bullets.js';
 import { DB } from '../fx/debris.js';
 import { PT } from '../fx/particles.js';
 import { resetBoxes } from '../systems/boxes.js';
@@ -11,6 +11,7 @@ import { closePicker, updateMapButton } from '../ui/mapPicker.js';
 import { fLevel, fPractice } from '../ui/tuningPanel.js';
 import { activeMap, applyTheme } from '../maps/index.js';
 import { generateMap } from '@rocket-duel/shared/level/generate.js';
+import { views } from '../ships/view.js';
 
 // Match flow: restart, rebuild the map, and switch between duel, solo and practice.
 export function restartMatch() {
@@ -25,7 +26,8 @@ export function restartMatch() {
 }
 function deactivate(s) {
   s.active = false; s.alive = false; s.thrust = 0;
-  s.group.visible = false; s.traj.visible = false; s.hullPts.visible = false; s.arrow.visible = false;
+  const v = views[s.id];
+  v.group.visible = false; v.traj.visible = false; v.hullPts.visible = false; v.arrow.visible = false;
 }
 // Builds the map, then switches the map theme and the Map button to it.
 export function buildLevel() {

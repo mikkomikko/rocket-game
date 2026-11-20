@@ -1,9 +1,9 @@
 import { SKIN } from '../config.js';
 import { hexRGB } from '@rocket-duel/shared/math.js';
 import { levelMat, srgb3 } from '../render/scene.js';
-import { ships } from '../ships/ship.js';
 import { pointers } from '../render/camera.js';
 import { updateWeaponButtons } from './weaponBox.js';
+import { views } from '../ships/view.js';
 
 /* ------------------------------------------------------------------ *
  * Skins: one colour per player, applied to the ship, its aim guide, shield,
@@ -23,7 +23,7 @@ export const skinOf = (id) => SKINS.find((k) => k.id === id) || SKINS[0];
 const shadeHex = (hex, f) => '#' + hexRGB(hex).map((v) => Math.round(v * f).toString(16).padStart(2, '0')).join('');
 export function applySkins(ids) {
   ids.forEach((id, i) => {
-    const hex = skinOf(id).hex, s = ships[i];
+    const hex = skinOf(id).hex, s = views[i];
     SKIN[i] = hex;
     s.hex = hex;
     s.color.set(hex);

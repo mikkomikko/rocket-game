@@ -2,9 +2,11 @@ import * as THREE from 'three';
 import { P, WEAPONS } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { solidAt } from '@rocket-duel/shared/level/mask.js';
-import { hullWorld, TRAJ_MAX } from '../ships/ship.js';
-import { shipMass } from '../ships/physics.js';
-import { B, bulletGeo, MAXB } from '../fx/pools.js';
+import { hullWorld } from '@rocket-duel/shared/ships/ship.js';
+import { TRAJ_MAX, views } from '../ships/view.js';
+import { shipMass } from '@rocket-duel/shared/ships/physics.js';
+import { bulletGeo } from '../fx/pools.js';
+import { B, MAXB } from '@rocket-duel/shared/bullets.js';
 import { bulletColor, MAXT, TR, trailGeo, trailQuad } from '../fx/trails.js';
 import { drawTerrainBits } from '../fx/debris.js';
 import { MAXP, partGeo, PT } from '../fx/particles.js';
@@ -76,9 +78,10 @@ export function drawPools() {
 }
 
 export function drawDebug(s, alpha) {
+  const v = views[s.id];
   // Trajectory: where the ship goes if the pilot keeps doing exactly what they're doing now.
   if (P.showTrajectory && s.alive) {
-    const pos = s.traj.geometry.attributes.position.array;
+    const pos = v.traj.geometry.attributes.position.array;
     let x = s.x, y = s.y, vx = s.vx, vy = s.vy;
     const m = shipMass(s), acc = P.thrustForce * s.thrust / m;
     const ax = -Math.sin(s.a) * acc, ay = Math.cos(s.a) * acc;
@@ -98,24 +101,24 @@ export function drawDebug(s, alpha) {
         if (solidAt(x, y)) break;
       }
     }
-    s.traj.geometry.setDrawRange(0, n);
-    s.traj.geometry.attributes.position.needsUpdate = true;
-    s.traj.visible = true;
-  } else s.traj.visible = false;
+    v.traj.geometry.setDrawRange(0, n);
+    v.traj.geometry.attributes.position.needsUpdate = true;
+    v.traj.visible = true;
+  } else v.traj.visible = false;
 
   if (P.showHull && s.alive) {
     const pts = hullWorld(s);
-    const arr = s.hullPts.geometry.attributes.position.array;
+    const arr = v.hullPts.geometry.attributes.position.array;
     pts.forEach((p, i) => { arr[i * 3] = p[0]; arr[i * 3 + 1] = p[1]; arr[i * 3 + 2] = 4; });
-    s.hullPts.geometry.attributes.position.needsUpdate = true;
-    s.hullPts.visible = true;
-  } else s.hullPts.visible = false;
+    v.hullPts.geometry.attributes.position.needsUpdate = true;
+    v.hullPts.visible = true;
+  } else v.hullPts.visible = false;
 
   const sp = Math.hypot(s.vx, s.vy);
   if (P.showVelocity && s.alive && sp > 1) {
-    s.arrow.position.set(s.x, s.y, 4);
-    s.arrow.setDirection(new THREE.Vector3(s.vx / sp, s.vy / sp, 0));
-    s.arrow.setLength(Math.max(12, sp * 0.3), 8, 6);
-    s.arrow.visible = true;
-  } else s.arrow.visible = false;
+    v.arrow.position.set(s.x, s.y, 4);
+    v.arrow.setDirection(new THREE.Vector3(s.vx / sp, s.vy / sp, 0));
+    v.arrow.setLength(Math.max(12, sp * 0.3), 8, 6);
+    v.arrow.visible = true;
+  } else v.arrow.visible = false;
 }

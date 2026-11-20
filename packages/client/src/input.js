@@ -1,8 +1,8 @@
 import { isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { clamp } from '@rocket-duel/shared/math.js';
-import { ships } from './ships/ship.js';
-import { cycleWeapon } from './ships/weapons.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
+import { cycleWeapon } from '@rocket-duel/shared/ships/weapons.js';
 import { restartMatch } from './game/modes.js';
 import { togglePanel, togglePause, toggleUI } from './ui/header.js';
 import { nextMap, picker, pickerKey } from './ui/mapPicker.js';

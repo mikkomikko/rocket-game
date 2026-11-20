@@ -1,5 +1,5 @@
 import { segDist } from '@rocket-duel/shared/math.js';
-import { ships } from '../../ships/ship.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { WAVES } from './constants.js';
 import { buildStarship, bulletHitsEnemy, chooseLevel, clearStarship, drawStarship, killEnemy, resetStarship, restartStarship, SH, stepStarship } from './starship.js';
 import { RB, rbLocal } from '../hangar/hangar.js';

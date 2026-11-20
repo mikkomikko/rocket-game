@@ -5,7 +5,8 @@ import { game } from '@rocket-duel/shared/state.js';
 import { approach, clamp } from '@rocket-duel/shared/math.js';
 import { H, level, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, renderer, scene, skyMesh, stage } from './scene.js';
-import { shapeGeo, ships } from '../ships/ship.js';
+import { shapeGeo, views } from '../ships/view.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { ENEMY_RED } from '../maps/starship/constants.js';
 import { activeMap } from '../maps/index.js';
 
@@ -102,7 +103,7 @@ function updateEnemyArrows(i, cx, cy, hw, hh) {
 
 let camZ = 1;   // extra zoom while a map's camera focus is on
 export function updateCamera(i, rect, dt, alpha) {
-  const s = ships[i], cam = cams[i], c = s.cam;
+  const s = ships[i], cam = cams[i], c = views[i].cam;
   let tx, ty;
   if (s.alive) {
     tx = s.px + (s.x - s.px) * alpha + s.vx * P.lookahead;

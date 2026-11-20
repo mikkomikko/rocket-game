@@ -4,15 +4,14 @@ import { mon } from './state.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { clamp } from '@rocket-duel/shared/math.js';
 import { gridMesh, renderer, scene, skyMat } from './render/scene.js';
-import { ships } from './ships/ship.js';
-import { shipMass, shipVsShip, updateShip } from './ships/physics.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
+import { shipMass } from '@rocket-duel/shared/ships/physics.js';
 import { pointScale } from './fx/pools.js';
-import { stepBullets } from './fx/bullets.js';
 import { stepTerrainBits } from './fx/debris.js';
 import { stepParticles } from './fx/particles.js';
 import { stepSmoke } from './fx/smoke.js';
 import { drawBoxes, stepBoxes } from './systems/boxes.js';
-import { drawBigLasers } from './ships/bigLaser.js';
+import { drawBigLasers } from './render/bigLaser.js';
 import { keysDown, padsSeen, prettyKey, readInputs } from './input.js';
 import { cams, updateCamera, viewRects } from './render/camera.js';
 import { drawDebug, drawPools } from './render/draw.js';
@@ -21,15 +20,14 @@ import { sfx } from './audio/sfx.js';
 import { updateWeaponBoxes } from './ui/weaponBox.js';
 import { activeMap, allMaps } from './maps/index.js';
 import { field } from './render/field.js';
+import { stepEffects } from './fx/effects.js';
+import { views } from './ships/view.js';
+import { stepSim } from '@rocket-duel/shared/sim.js';
 
 // The fixed-step simulation (step) and the render loop (frame).
 function step(h) {
-  game.time += h;
-  game.matchClock += h;
-  for (const s of ships) { s.px = s.x; s.py = s.y; s.pa = s.a; }
-  for (const s of ships) if (s.active) updateShip(s, h);
-  shipVsShip();
-  stepBullets(h);
+  stepSim(h);
+  stepEffects(h);
   stepParticles(h);
   stepTerrainBits(h);
   stepSmoke(h);
@@ -61,34 +59,35 @@ function frame(now) {
 
   if (field.dirty) { field.tex.needsUpdate = true; field.dirty = false; }
   for (const s of ships) {
-    if (!s.alive) { s.group.visible = false; s.flame.visible = false; drawDebug(s, alpha); continue; }
-    s.group.visible = true;
-    s.group.position.set(s.px + (s.x - s.px) * alpha, s.py + (s.y - s.py) * alpha, 1);
-    s.group.rotation.z = s.pa + (s.a - s.pa) * alpha;
-    s.group.scale.setScalar(P.shipSize);
-    s.shield.visible = s.invulnT > 0;
-    if (s.shield.visible) s.shield.material.opacity = (0.45 + 0.25 * Math.sin(game.time * 9)) * Math.min(1, s.invulnT / 0.4);
-    s.aura.material.opacity = 0.16 + 0.18 * s.thrust + (s.minigunT > 0 ? 0.15 + 0.1 * Math.sin(game.time * 12) : 0);
-    s.flame.visible = s.thrust > 0.02;
-    s.flame.scale.set(0.85 + 0.15 * s.thrust, s.thrust * (0.8 + Math.random() * 0.4), 1);
+    const v = views[s.id];
+    if (!s.alive) { v.group.visible = false; v.flame.visible = false; drawDebug(s, alpha); continue; }
+    v.group.visible = true;
+    v.group.position.set(s.px + (s.x - s.px) * alpha, s.py + (s.y - s.py) * alpha, 1);
+    v.group.rotation.z = s.pa + (s.a - s.pa) * alpha;
+    v.group.scale.setScalar(P.shipSize);
+    v.shield.visible = s.invulnT > 0;
+    if (v.shield.visible) v.shield.material.opacity = (0.45 + 0.25 * Math.sin(game.time * 9)) * Math.min(1, s.invulnT / 0.4);
+    v.aura.material.opacity = 0.16 + 0.18 * s.thrust + (s.minigunT > 0 ? 0.15 + 0.1 * Math.sin(game.time * 12) : 0);
+    v.flame.visible = s.thrust > 0.02;
+    v.flame.scale.set(0.85 + 0.15 * s.thrust, s.thrust * (0.8 + Math.random() * 0.4), 1);
     // No crosshair by default: only while a crosshair box is running (it blinks in the last 3 s).
-    s.aim.visible = s.active && s.crossT > 0 && (s.crossT > 3 || Math.sin(game.time * 16) > -0.3);
-    s.ice.visible = s.frozenT > 0;
-    if (s.ice.visible) {
+    v.aim.visible = s.active && s.crossT > 0 && (s.crossT > 3 || Math.sin(game.time * 16) > -0.3);
+    v.ice.visible = s.frozenT > 0;
+    if (v.ice.visible) {
       const fade = Math.min(1, s.frozenT / 0.6);   // thaws over the last moment
       const blink = s.frozenT < 1.2 ? 0.75 + 0.25 * Math.sin(game.time * 22) : 1;
-      s.ice.userData.shell.material.opacity = 0.55 * fade * blink;
-      s.ice.userData.ring.material.opacity = 0.6 * fade;
-      s.ice.userData.ring.rotation.z = game.time * 0.6 - s.group.rotation.z;
+      v.ice.userData.shell.material.opacity = 0.55 * fade * blink;
+      v.ice.userData.ring.material.opacity = 0.6 * fade;
+      v.ice.userData.ring.rotation.z = game.time * 0.6 - v.group.rotation.z;
     }
-    s.ball.visible = s.ballT > 0;
-    if (s.ball.visible) {
-      const u = s.ball.userData, age = WEAPONS[BALL_IDX].ball - s.ballT;
+    v.ball.visible = s.ballT > 0;
+    if (v.ball.visible) {
+      const u = v.ball.userData, age = WEAPONS[BALL_IDX].ball - s.ballT;
       const fade = Math.min(1, s.ballT / 0.4);   // pops at the end
       const blink = s.ballT < 1.2 ? 0.7 + 0.3 * Math.sin(game.time * 22) : 1;
       u.mats.forEach((m, k) => { m.opacity = u.base[k] * fade * blink; });
-      s.ball.scale.setScalar(Math.min(1, 0.4 + age * 5) * (1 + 0.04 * Math.sin(game.time * 9)));
-      u.shine.rotation.z = -s.group.rotation.z;   // the highlight stays put while the ball spins
+      v.ball.scale.setScalar(Math.min(1, 0.4 + age * 5) * (1 + 0.04 * Math.sin(game.time * 9)));
+      u.shine.rotation.z = -v.group.rotation.z;   // the highlight stays put while the ball spins
     }
     drawDebug(s, alpha);
   }

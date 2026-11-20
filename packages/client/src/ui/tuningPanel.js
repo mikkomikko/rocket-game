@@ -4,7 +4,7 @@ import { DEFAULTS, P, PR, PRESETS } from '@rocket-duel/shared/config.js';
 import { mon } from '../state.js';
 import { level } from '@rocket-duel/shared/level/mask.js';
 import { MAPS } from '@rocket-duel/shared/level/terrain.js';
-import { ships } from '../ships/ship.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { applyLayout, rebuildCave, restartMatch } from '../game/modes.js';
 
 /* ------------------------------------------------------------------ *

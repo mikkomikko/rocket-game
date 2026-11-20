@@ -61,6 +61,8 @@ export const BALL_R = 19;          // ball radius (world units at ship size 1)
 export const BALL_MASS = 4;        // extra mass while trapped: heavier to knock around, hits the other ship harder
 export const BALL_BOUNCE = 0.86;   // share of impact speed kept on each bounce
 export const BALL_GRAV = 1.3;      // gravity multiplier while trapped
+// The Forest planet's minigun pickup: seconds it lasts, and how much faster it fires.
+export const MINIGUN_TIME = 30, MINIGUN_RATE = 4;
 
 // Practice mode: one ship in an empty, walled arena. These toggles stay out of the tuning JSON.
 export const PR = { infiniteAmmo: true, noDamage: false, grid: true, spawn: 'floor' };

@@ -1,16 +1,11 @@
-import { BALL_MASS, DEG, isPractice, P, PR, WEAPONS } from '@rocket-duel/shared/config.js';
-import { approach, wrapAngle } from '@rocket-duel/shared/math.js';
-import { carve, H, level, maskAt, solidAt } from '@rocket-duel/shared/level/mask.js';
-import { hullSolid, hullWorld, localToWorld, ships } from './ship.js';
+import { BALL_MASS, DEG, isPractice, P, PR, WEAPONS } from '../config.js';
+import { approach, wrapAngle } from '../math.js';
+import { carve, H, level, maskAt, solidAt } from '../level/mask.js';
+import { simEvent } from '../events.js';
+import { mapRules } from '../maps.js';
+import { hullSolid, hullWorld, ships } from './ship.js';
 import { fire, shipR, stepBall } from './weapons.js';
-import { EMBER, FIRE, ICE_COL, WHITE } from '../fx/pools.js';
-import { dust } from '../fx/explosions.js';
-import { terrainDebris } from '../fx/debris.js';
-import { emit } from '../fx/particles.js';
-import { emitSmoke } from '../fx/smoke.js';
 import { stepBigLaser } from './bigLaser.js';
-import { sfx } from '../audio/sfx.js';
-import { activeMap } from '../maps/index.js';
 
 // Ship physics: mass, landing, damage and respawn, terrain collision and ship-vs-ship bumps.
 export const shipMass = (s) => P.mass + s.ammo * P.ammoWeight + (s.ballT > 0 ? BALL_MASS : 0);
@@ -42,10 +37,11 @@ function supported(s) {
   return false;
 }
 
-export function addShake(s, amount) { s.cam.shake = Math.max(s.cam.shake, amount * P.shake); }
+// Camera shake for this ship's player (0 to about 1.6).
+export function addShake(s, amount) { simEvent('shake', s, amount); }
 
 export function damage(s, amount) {
-  if (!s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage) || activeMap().shipsSafe?.()) return;
+  if (!s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage) || mapRules().shipsSafe?.()) return;
   s.hp -= amount;
   addShake(s, Math.min(1, amount / 30));
   if (s.hp <= 0) { s.hp = 0; kill(s); }
@@ -60,37 +56,14 @@ export function kill(s, eaten = false) {
   s.respawnT = P.respawnTime;
   s.deathX = s.x; s.deathY = s.y;
   s.thrust = 0;
-  s.group.visible = false;
   const other = ships[1 - s.id];
-  if (!isPractice() && !activeMap().coop) other.score++;   // in Floors and Starship you score another way
-  activeMap().onKill?.(s);
+  if (!isPractice() && !mapRules().coop) other.score++;   // in Floors and Starship you score another way
+  mapRules().onKill?.(s);
   const how = eaten === true ? 'eaten' : (eaten || '');
   s.eaten = how === 'eaten';
   s.lava = how === 'lava';
-  if (s.eaten) { sfx.bump(s, 400); return; }
-  sfx.death(s);
-  if (s.lava) {
-    for (let i = 0; i < 40; i++) emit(s.x + (Math.random() - 0.5) * 20, s.y, (Math.random() - 0.5) * 160, 80 + Math.random() * 220, 0.5 + Math.random() * 0.7, i % 2 ? FIRE : EMBER, 0.6, 3 + Math.random() * 5);
-    for (let i = 0; i < 5; i++) emitSmoke(s.x, s.y + 10, (Math.random() - 0.5) * 30, 30 + Math.random() * 30, 1.5 + Math.random(), 8 + Math.random() * 6);
-    addShake(s, 1.2);
-    return;
-  }
-  for (let i = 0; i < 70; i++) {
-    const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 260;
-    emit(s.x, s.y, s.vx * 0.4 + Math.cos(a) * sp, s.vy * 0.4 + Math.sin(a) * sp, 0.5 + Math.random() * 0.9, i % 3 ? s.color : FIRE, 0.4, 3 + Math.random() * 5);
-  }
-  emit(s.x, s.y, 0, 0, 0.35, s.color, 0, 70);
-  emit(s.x, s.y, 0, 0, 0.2, WHITE, 0, 34);
-  if (P.smoke) {
-    for (let i = 0; i < 18; i++) {
-      const a = Math.random() * Math.PI * 2, sp = 15 + Math.random() * 70;
-      emitSmoke(s.x, s.y, Math.cos(a) * sp + s.vx * 0.2, Math.sin(a) * sp + s.vy * 0.2, P.smokeLife * (0.8 + Math.random() * 0.6), 12 + Math.random() * 10);
-    }
-  }
-  terrainDebris(s.x, s.y, 1.6);
-  if (P.destructible) carve(s.x, s.y, P.holeRadius * 2.2);
-  addShake(s, 1.6);
-  if (other.active) addShake(other, 0.4);
+  simEvent('killed', s, how);
+  if (!s.eaten && !s.lava && P.destructible) carve(s.x, s.y, P.holeRadius * 2.2);
 }
 
 export function respawn(s) {
@@ -101,11 +74,9 @@ export function respawn(s) {
   s.vx = 0; s.vy = 0; s.a = 0; s.pa = 0; s.av = 0; s.thrust = 0;
   s.hp = 100; s.ammo = P.ammoMax;
   s.landed = !air; s.onPad = !isPractice(); s.alive = true; s.active = true; s.lastImpact = 0; s.eaten = false; s.lava = false; s.minigunT = 0; s.frozenT = 0; s.ballT = 0;
-  activeMap().onRespawn?.(s);
+  mapRules().onRespawn?.(s);
   s.invulnT = P.invulnTime; s.fireCd = 0.2;
-  s.cam.x = s.x; s.cam.y = s.y;
-  s.group.visible = true;
-  sfx.respawn(s);
+  simEvent('respawned', s);
 }
 
 function resolveTerrain(s) {
@@ -130,7 +101,7 @@ function resolveTerrain(s) {
   if (n.y > 0.7 && upright && impact <= P.landMaxSpeed) {
     s.landed = true; s.vx = 0; s.vy = 0;
     s.onPad = standingOnPad(s);
-    if (impact > 40) { dust(cx, cy, n, impact * 0.5); sfx.bump(s, impact * 0.4); }
+    if (impact > 40) simEvent('touchdown', s, cx, cy, n, impact);
     return;
   }
   const tx = s.vx - vn * n.x, ty = s.vy - vn * n.y;
@@ -140,7 +111,7 @@ function resolveTerrain(s) {
   s.vy = ty * keep + n.y * impact * bounce;
   if (impact > P.lethalImpact) damage(s, 1e9);
   else if (impact > P.safeImpact) damage(s, (impact - P.safeImpact) * P.damagePerSpeed);
-  if (impact > 40) { addShake(s, Math.min(1, impact / 400)); dust(cx, cy, n, impact); sfx.bump(s, impact); }
+  if (impact > 40) simEvent('crash', s, cx, cy, n, impact);
 }
 
 export function updateShip(s, h) {
@@ -161,16 +132,7 @@ export function updateShip(s, h) {
       s.x += s.vx * h; s.y += s.vy * h;
       resolveTerrain(s);
     }
-    if (Math.random() < 0.25) {
-      const a = Math.random() * Math.PI * 2;
-      emit(s.x + Math.cos(a) * 12, s.y + Math.sin(a) * 12, s.vx * 0.5 + Math.cos(a) * 20, s.vy * 0.5 + Math.sin(a) * 20, 0.5, ICE_COL, 0.3, 2.5 + Math.random() * 2);
-    }
-    if (s.frozenT === 0) {
-      for (let i = 0; i < 18; i++) {
-        const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 120;
-        emit(s.x, s.y, s.vx * 0.3 + Math.cos(a) * sp, s.vy * 0.3 + Math.sin(a) * sp, 0.4 + Math.random() * 0.4, i % 2 ? ICE_COL : WHITE, 0.8, 2 + Math.random() * 3);
-      }
-    }
+    if (s.frozenT === 0) simEvent('thawed', s);
     return;
   }
 
@@ -209,21 +171,6 @@ export function updateShip(s, h) {
   if (!s.alive) return;
   if (inp.fire && s.fireCd <= 0 && (s.ammo >= WEAPONS[s.weapon].cost || s.minigunT > 0 || (isPractice() && PR.infiniteAmmo))) fire(s);
   stepBigLaser(s, h);
-  if (s.thrust > 0.05 && Math.random() < s.thrust * 0.9) {
-    const t = localToWorld(s, 0, -7);
-    const sp = 120 + Math.random() * 120;
-    emit(t.x, t.y, s.vx - fx * sp + (Math.random() - 0.5) * 50, s.vy - fy * sp + (Math.random() - 0.5) * 50, 0.25 + Math.random() * 0.25, Math.random() < 0.5 ? FIRE : EMBER, 0.2, 3 + Math.random() * 3);
-  }
-  if (P.smoke && s.thrust > 0.02) {
-    s.smokeAcc += P.smokeRate * s.thrust * h;
-    while (s.smokeAcc >= 1) {
-      s.smokeAcc -= 1;
-      const t = localToWorld(s, (Math.random() - 0.5) * 3, -10);
-      const sp = 30 + Math.random() * 40;
-      emitSmoke(t.x, t.y, s.vx * 0.25 - fx * sp + (Math.random() - 0.5) * 24, s.vy * 0.25 - fy * sp + (Math.random() - 0.5) * 24,
-        P.smokeLife * (0.75 + Math.random() * 0.5), (7 + Math.random() * 5) * P.shipSize);
-    }
-  }
 }
 
 export function shipVsShip() {
@@ -242,5 +189,5 @@ export function shipVsShip() {
   a.vx -= j / ma * nx; a.vy -= j / ma * ny;
   b.vx += j / mb * nx; b.vy += j / mb * ny;
   if (j > 5) { a.landed = false; b.landed = false; }
-  if (j > 60) sfx.hit((a.x + b.x) / 2, (a.y + b.y) / 2);
+  if (j > 60) simEvent('sound', 'hit', (a.x + b.x) / 2, (a.y + b.y) / 2);
 }
