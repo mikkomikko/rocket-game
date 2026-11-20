@@ -1,0 +1,64 @@
+/* HUD: sits on the dark game world in both themes */
+.hud {
+  position: absolute;
+  top: 12px;
+  width: 216px;
+  padding: 10px 12px 11px;
+  border-radius: 14px;
+  background: rgba(14, 11, 38, 0.72);
+  color: #efecff;
+  font-size: 13px;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.stage[data-split="side"] .hud[data-p="0"] { left: 12px; }
+.stage[data-split="side"] .hud[data-p="1"] { left: calc(50% + 14px); }
+.stage[data-split="stacked"] .hud[data-p="0"] { left: 12px; }
+.stage[data-split="stacked"] .hud[data-p="1"] { left: 12px; top: calc(50% + 14px); }
+.hud-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+.hud-name { font-weight: 760; font-size: 15px; font-variation-settings: "ROND" 100; }
+.hud[data-p="0"] .hud-name { color: var(--p1); }
+.hud[data-p="1"] .hud-name { color: var(--p2); }
+.hud-score { font-size: 28px; line-height: 1; font-weight: 820; font-variant-numeric: tabular-nums; font-variation-settings: "ROND" 100; }
+.meter { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 8px; margin-top: 4px; }
+.meter-label { color: #b9b3e0; }
+.meter-track { height: 7px; border-radius: 99px; background: rgba(255,255,255,0.12); overflow: hidden; }
+.meter-fill { display: block; height: 100%; width: 100%; border-radius: inherit; transform-origin: left center; }
+.hud[data-p="0"] .meter-fill { background: var(--p1); }
+.hud[data-p="1"] .meter-fill { background: var(--p2); }
+.meter-fill.ammo { opacity: 0.6; }
+.hud-status { margin-top: 7px; min-height: 18px; color: #ffffff; font-weight: 600; }
+.hud-keys { margin-top: 4px; color: #b9b3e0; line-height: 1.7; }
+.hud-keys kbd {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: #efecff;
+  background: rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-right: 2px;
+}
+.hud-pad { color: #b9b3e0; margin-top: 2px; }
+.hud-pad:empty { display: none; }
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: #ffffff;
+  text-align: center;
+}
+.overlay[hidden] { display: none; }
+.overlay p {
+  margin: 0;
+  padding: 14px 22px;
+  border-radius: 16px;
+  background: rgba(14, 11, 38, 0.8);
+  font-size: 18px;
+  font-weight: 650;
+  font-variation-settings: "ROND" 80;
+}
+.overlay small { display: block; font-size: 14px; font-weight: 450; color: #c9c4ec; margin-top: 4px; }

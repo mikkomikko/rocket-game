@@ -1,0 +1,32 @@
+/* JSON dialog */
+dialog {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 18px;
+  width: min(560px, calc(100% - 32px));
+}
+dialog::backdrop { background: rgba(10, 8, 30, 0.5); }
+dialog h2 { margin: 0 0 4px; font-size: 18px; font-weight: 760; font-variation-settings: "ROND" 100; }
+dialog p { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+dialog textarea {
+  width: 100%;
+  height: 260px;
+  resize: vertical;
+  font: 13px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+dialog textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.dialog-row { display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 12px; }
+.dialog-msg { color: var(--muted); font-size: 13px; }
+.load-error { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; padding: 24px; text-align: center; }
+.load-error[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+}

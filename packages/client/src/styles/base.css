@@ -1,0 +1,64 @@
+@font-face {
+  font-family: "Allo";
+  src: url("/fonts/allo.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+:root {
+  --bg: #f2f0fb;
+  --surface: #ffffff;
+  --ink: #1e1a3c;
+  --muted: #5f5986;
+  --line: #dcd7ef;
+  --chip: #ebe7f8;
+  --chip-hover: #e0dbf3;
+  --chip-active: #d4cdee;
+  --focus: #5b4bd6;
+  --world: #0a0820;
+  --p1: #ffe066;
+  --p2: #6ee7ff;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #16132f;
+    --surface: #1c1840;
+    --ink: #ece9ff;
+    --muted: #a6a0cf;
+    --line: #2e2856;
+    --chip: #27224f;
+    --chip-hover: #302a5e;
+    --chip-active: #3a336d;
+    --focus: #b2a6ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #16132f;
+  --surface: #1c1840;
+  --ink: #ece9ff;
+  --muted: #a6a0cf;
+  --line: #2e2856;
+  --chip: #27224f;
+  --chip-hover: #302a5e;
+  --chip-active: #3a336d;
+  --focus: #b2a6ff;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Allo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+.app { display: grid; grid-template-rows: auto 1fr; height: 100%; }

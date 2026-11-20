@@ -1,0 +1,23 @@
+/* Main area */
+.main { display: grid; grid-template-columns: minmax(0, 1fr) auto; min-height: 0; position: relative; }
+.stage { position: relative; min-width: 0; min-height: 0; background: var(--world); overflow: hidden; outline: none; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.divider { position: absolute; background: rgba(255,255,255,0.14); box-shadow: 0 0 0 1px rgba(6,4,22,0.55), 0 0 18px rgba(0,0,0,0.5); pointer-events: none; z-index: 1; }
+.vignette { position: absolute; inset: 0; pointer-events: none; }
+.stage[data-split="side"] .vignette {
+  background:
+    radial-gradient(ellipse at center, transparent 58%, rgba(6, 4, 22, 0.5) 100%) 0 0 / 50% 100% no-repeat,
+    radial-gradient(ellipse at center, transparent 58%, rgba(6, 4, 22, 0.5) 100%) 100% 0 / 50% 100% no-repeat;
+}
+.stage[data-split="stacked"] .vignette {
+  background:
+    radial-gradient(ellipse at center, transparent 58%, rgba(6, 4, 22, 0.5) 100%) 0 0 / 100% 50% no-repeat,
+    radial-gradient(ellipse at center, transparent 58%, rgba(6, 4, 22, 0.5) 100%) 0 100% / 100% 50% no-repeat;
+}
+.stage[data-split="side"] .divider { top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-50%); }
+.stage[data-split="stacked"] .divider { left: 0; right: 0; top: 50%; height: 2px; transform: translateY(-50%); }
+.stage[data-split="single"] .divider, .stage[data-split="single"] .hud[data-p="1"], .stage[data-split="single"] .hud-score { display: none; }
+.stage[data-split="single"] .vignette { background: radial-gradient(ellipse at center, transparent 62%, rgba(6, 4, 22, 0.5) 100%); }
+.stage[data-split="single"] .hud[data-p="0"] { left: 12px; width: 260px; }
+.hud-tele { display: none; margin-top: 6px; white-space: pre-line; font-variant-numeric: tabular-nums; color: #dcd8f7; line-height: 1.55; }
+.stage[data-split="single"] .hud-tele { display: block; }

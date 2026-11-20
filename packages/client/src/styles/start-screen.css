@@ -1,0 +1,77 @@
+/* Start screen: players, skins and map (on the dark game world in both themes) */
+.start {
+  position: absolute; inset: 0; z-index: 6;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 20px 16px; overflow-y: auto;
+  background: rgba(8, 6, 24, 0.72);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  color: #efecff;
+}
+.start[hidden] { display: none; }
+.start-box {
+  width: min(820px, 100%); margin: auto 0;
+  padding: 22px 24px 18px; border-radius: 22px;
+  background: rgba(14, 11, 38, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.start-title { margin: 0 0 14px; font-size: 34px; line-height: 1; font-weight: 880; letter-spacing: -0.02em; font-variation-settings: "ROND" 100; }
+.start-row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.start-label { margin: 6px 0 0; font-size: 15px; font-weight: 720; color: #b9b3e0; font-variation-settings: "ROND" 80; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.seg-btn {
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06); border: 2px solid transparent;
+}
+.seg-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.seg-btn[aria-pressed="true"] { border-color: #efecff; background: rgba(255, 255, 255, 0.12); }
+.seg-btn b { display: block; font-size: 17px; font-weight: 780; font-variation-settings: "ROND" 100; }
+.seg-btn small { display: block; font-size: 12px; color: #b9b3e0; }
+.seg-ico { display: flex; gap: 2px; flex-shrink: 0; }
+.seg-ico svg { width: 22px; height: 32px; display: block; }
+.skins { display: grid; gap: 10px; }
+.skin-row { display: flex; align-items: center; gap: 14px; }
+.skin-row[hidden] { display: none; }
+.skin-preview {
+  flex-shrink: 0; width: 64px; height: 64px; border-radius: 16px;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--skin) 28%, transparent), transparent 70%), rgba(255, 255, 255, 0.05);
+}
+.skin-preview svg { width: 34px; height: 50px; display: block; transform: rotate(-14deg); }
+.skin-who { font-size: 14px; font-weight: 720; margin-bottom: 6px; }
+.skin-who span { font-weight: 500; color: #b9b3e0; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch {
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer; padding: 0;
+  background: var(--c); border: 3px solid rgba(14, 11, 38, 0.96);
+  box-shadow: 0 0 0 2px transparent;
+}
+.swatch:hover { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35); }
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #efecff; }
+.swatch[aria-disabled="true"] { opacity: 0.22; cursor: not-allowed; box-shadow: none; }
+.start-maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; }
+.start-maps .map-card { padding: 5px 5px 8px; }
+.start-maps .map-card .desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.start-maps .map-card[aria-pressed="true"] { border-color: #efecff; background: rgba(255, 255, 255, 0.12); }
+.start .seg-btn:focus-visible, .start .swatch:focus-visible, .start .map-card:focus-visible, .start-go:focus-visible, .start .pbtn:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+.start-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.start-hint { color: #b9b3e0; font-size: 12px; line-height: 1.8; }
+.start kbd { font: inherit; font-size: 11px; font-weight: 650; color: #efecff; background: rgba(255, 255, 255, 0.12); border-radius: 6px; padding: 1px 5px; margin-right: 2px; }
+.start-actions { display: flex; gap: 8px; align-items: center; }
+.start-actions .pbtn[hidden] { display: none; }
+.start-go {
+  font: inherit; font-size: 16px; font-weight: 780; cursor: pointer;
+  color: #1e1a3c; background: var(--p1); border: 0; border-radius: 999px;
+  padding: 10px 22px; font-variation-settings: "ROND" 100;
+}
+.start-go:hover { filter: brightness(1.08); }
+@media (max-width: 600px) {
+  .start-box { padding: 18px 14px 14px; border-radius: 18px; }
+  .start-title { font-size: 28px; }
+  .start-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .start-label { margin: 0; }
+  .seg { grid-template-columns: minmax(0, 1fr); }
+  .start-maps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

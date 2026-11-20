@@ -1,0 +1,52 @@
+/* Header */
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.brand { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
+.title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 860;
+  font-variation-settings: "ROND" 100;
+  letter-spacing: -0.015em;
+}
+.sub { margin: 0; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.actions { display: flex; gap: 8px; flex-shrink: 0; }
+.btn {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 560;
+  color: var(--ink);
+  background: var(--chip);
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-variation-settings: "ROND" 60;
+}
+.btn:hover { background: var(--chip-hover); }
+.btn:active { background: var(--chip-active); }
+.btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.btn kbd {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  opacity: 0.7;
+}
+
+/* Mode switch */
+.mode { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--chip); }
+.mode .btn { padding: 4px 12px; background: transparent; }
+.mode .btn:hover { background: var(--chip-hover); }
+.mode .btn[aria-pressed="true"] { background: var(--ink); color: var(--surface); }

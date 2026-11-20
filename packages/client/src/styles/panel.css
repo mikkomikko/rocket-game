@@ -1,0 +1,56 @@
+/* Tuning panel */
+.panel {
+  width: 336px;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  padding: 8px 8px 24px;
+  --tp-base-background-color: var(--surface);
+  --tp-base-shadow-color: transparent;
+  --tp-base-font-family: "Allo", system-ui, sans-serif;
+  --tp-button-background-color: var(--chip);
+  --tp-button-background-color-hover: var(--chip-hover);
+  --tp-button-background-color-focus: var(--chip-hover);
+  --tp-button-background-color-active: var(--chip-active);
+  --tp-button-foreground-color: var(--ink);
+  --tp-container-background-color: var(--chip);
+  --tp-container-background-color-hover: var(--chip-hover);
+  --tp-container-background-color-focus: var(--chip-hover);
+  --tp-container-background-color-active: var(--chip-active);
+  --tp-container-foreground-color: var(--ink);
+  --tp-groove-foreground-color: var(--line);
+  --tp-input-background-color: var(--chip);
+  --tp-input-background-color-hover: var(--chip-hover);
+  --tp-input-background-color-focus: var(--chip-hover);
+  --tp-input-background-color-active: var(--chip-active);
+  --tp-input-foreground-color: var(--ink);
+  --tp-label-foreground-color: var(--muted);
+  --tp-monitor-background-color: var(--bg);
+  --tp-monitor-foreground-color: var(--muted);
+  --tp-blade-value-width: 150px;
+}
+.panel .tp-rotv { width: 100%; font-size: 12px; }
+.panel-note { margin: 6px 6px 10px; color: var(--muted); font-size: 13px; }
+.main.panel-hidden .panel { display: none; }
+
+@media (max-width: 820px) {
+  .sub { display: none; }
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .panel {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: min(336px, 92%);
+    z-index: 5;
+    box-shadow: -12px 0 32px rgba(0,0,0,0.25);
+  }
+  .hud { width: 180px; font-size: 12px; }
+  .hud-keys { display: none; }
+}
+
+@media (max-width: 600px) {
+  .bar { padding: 8px 10px; gap: 8px; }
+  .title { font-size: 19px; }
+  .actions { gap: 6px; }
+  .btn { padding: 6px 10px; }
+  .btn kbd { display: none; }
+}

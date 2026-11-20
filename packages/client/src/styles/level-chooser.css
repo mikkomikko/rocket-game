@@ -1,0 +1,16 @@
+/* Starship level chooser */
+.lvl-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 4px; }
+.lvl-btn {
+  font: inherit;
+  width: 86px;
+  padding: 10px 6px 9px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #efecff;
+  cursor: pointer;
+}
+.lvl-btn b { display: block; font-size: 28px; line-height: 1.1; font-weight: 820; color: var(--p1); font-variation-settings: "ROND" 100; }
+.lvl-btn span { font-size: 12px; color: #b9b3e0; }
+.lvl-btn:hover { background: rgba(255, 224, 102, 0.14); border-color: rgba(255, 224, 102, 0.5); }
+.lvl-btn:focus-visible { outline: 2px solid var(--p1); outline-offset: 2px; }

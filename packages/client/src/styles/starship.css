@@ -1,0 +1,39 @@
+/* Starship: wave banner and the escape screen (on the dark game world in both themes) */
+.wavebar {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 14px;
+  background: rgba(14, 11, 38, 0.82);
+  color: #efecff;
+  font-size: 14px;
+  font-weight: 650;
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.wavebar[hidden], .boss-track[hidden], .finish[hidden] { display: none; }
+.boss-track { width: 240px; height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.boss-fill { display: block; height: 100%; width: 100%; border-radius: inherit; background: #ff4d5e; transform-origin: left center; }
+.finish { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: 16px; background: rgba(8, 6, 24, 0.55); }
+.finish-box {
+  max-width: 100%;
+  padding: 22px 28px;
+  border-radius: 18px;
+  text-align: center;
+  color: #efecff;
+  background: rgba(14, 11, 38, 0.95);
+  border: 1px solid rgba(255, 224, 102, 0.4);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+}
+.finish-box h2 { margin: 0 0 6px; font-size: 22px; font-weight: 800; color: var(--p1); font-variation-settings: "ROND" 100; }
+.finish-time { margin: 0; font-size: 44px; line-height: 1.1; font-weight: 820; font-variant-numeric: tabular-nums; font-variation-settings: "ROND" 100; }
+.finish-sub { margin: 6px 0 16px; color: #b9b3e0; font-size: 14px; }

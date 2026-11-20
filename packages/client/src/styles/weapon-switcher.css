@@ -1,0 +1,24 @@
+/* Weapon switcher: a small rounded square that pops up next to the ship */
+.wsel {
+  position: absolute; left: 0; top: 0; z-index: 3;
+  width: 40px; height: 40px; border-radius: 12px;
+  background: rgba(14, 11, 38, 0.8);
+  border: 1.5px solid var(--wc, rgba(255, 255, 255, 0.3));
+  box-shadow: 0 0 14px -2px var(--wc, transparent);
+  overflow: hidden; pointer-events: none;
+  opacity: 0; transform: scale(0.7);
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(.3, 1.5, .5, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+  will-change: left, top;
+}
+.wsel.on { opacity: 1; transform: scale(1); }
+.wsel-icon { position: absolute; inset: 0; display: grid; place-items: center; }
+.wsel-icon svg { width: 26px; height: 26px; display: block; }
+.hud-wrow { display: flex; margin-top: 2px; }
+.hud-wbtn { min-width: 118px; justify-content: space-between; }
+.hud-wbtn .wico { display: inline-grid; place-items: center; width: 16px; height: 16px; }
+.hud-wbtn .wico svg { width: 16px; height: 16px; display: block; }
+.hud-wbtn .wname { flex: 1; text-align: left; }
+.hud[data-p="1"] .hud-btn { background: var(--p2); }
+.stage[data-split="single"] .hud-wbtn { display: inline-flex; }
+@media (prefers-reduced-motion: reduce) { .wsel { transition: opacity 0.18s ease; transform: none; } }
+.hud-tele:empty { display: none; }

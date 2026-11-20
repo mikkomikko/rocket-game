@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rocket duel</title>
+<link rel="preload" href="/fonts/allo.woff2" as="font" type="font/woff2" crossorigin>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <h1 class="title">Rocket duel</h1>
+      <p class="sub">Two ships, one cave, every constant on a slider.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnNewGame" type="button">New game <kbd>N</kbd></button>
+      <button class="btn" id="btnRestart" type="button">Restart match</button>
+      <button class="btn" id="btnPause" type="button" aria-pressed="false">Pause <kbd>P</kbd></button>
+      <button class="btn" id="btnPanel" type="button" aria-pressed="true">Tuning <kbd>H</kbd></button>
+      <button class="btn" id="btnUI" type="button" aria-pressed="false">Hide UI <kbd>U</kbd></button>
+    </div>
+  </header>
+  <div class="main" id="main">
+    <div class="stage" id="stage" data-split="side" role="img" aria-label="Game view. Player 1 uses W, A, D and left Shift. Player 2 uses the arrow keys and the minus key.">
+      <div class="vignette"></div>
+      <div class="wsel" id="wsel0" aria-hidden="true"></div>
+      <div class="wsel" id="wsel1" aria-hidden="true"></div>
+      <div class="divider"></div>
+      <button class="ui-show" id="btnShowUI" type="button">Show UI <kbd>U</kbd></button>
+      <div class="mini-hud" id="miniHud"><div class="mh-players"><div class="mh-p" data-p="0"><span class="mh-tag"></span><div class="mh-hp"><i></i></div><div class="mh-ammo"><i></i></div><span class="mh-note"></span></div><div class="mh-p" data-p="1"><span class="mh-tag"></span><div class="mh-hp"><i></i></div><div class="mh-ammo"><i></i></div><span class="mh-note"></span></div></div><div id="miniLevel"></div></div>
+      <div class="hud" data-p="0">
+        <div class="hud-top"><span class="hud-name">Player 1</span><span class="hud-score">0</span></div>
+        <div class="meter"><span class="meter-label">Hull</span><span class="meter-track"><span class="meter-fill hull"></span></span></div>
+        <div class="meter"><span class="meter-label">Ammo</span><span class="meter-track"><span class="meter-fill ammo"></span></span></div>
+        <div class="hud-status"></div>
+        <div class="hud-tele"></div>
+        <div class="hud-keys"><kbd>W</kbd>thrust <kbd>A</kbd><kbd>D</kbd>turn <kbd>L Shift</kbd>fire <kbd>S</kbd>weapon</div>
+        <div class="hud-wrow"><button class="hud-btn hud-wbtn" data-p="0" type="button" aria-label="Change weapon"><span class="wico"></span><span class="wname">Blaster</span><kbd>S</kbd></button></div>
+        <div class="hud-row"><button class="hud-btn" id="btnMaps" type="button">Map</button><button class="hud-btn hud-btn-alt" id="btnMapList" type="button" aria-haspopup="dialog">All maps</button></div>
+        <div class="hud-pad"></div>
+      </div>
+      <div class="hud" data-p="1">
+        <div class="hud-top"><span class="hud-name">Player 2</span><span class="hud-score">0</span></div>
+        <div class="meter"><span class="meter-label">Hull</span><span class="meter-track"><span class="meter-fill hull"></span></span></div>
+        <div class="meter"><span class="meter-label">Ammo</span><span class="meter-track"><span class="meter-fill ammo"></span></span></div>
+        <div class="hud-status"></div>
+        <div class="hud-keys"><kbd>↑</kbd>thrust <kbd>←</kbd><kbd>→</kbd>turn <kbd>-</kbd>fire <kbd>↓</kbd>weapon</div>
+        <div class="hud-wrow"><button class="hud-btn hud-wbtn" data-p="1" type="button" aria-label="Change weapon"><span class="wico"></span><span class="wname">Blaster</span><kbd>↓</kbd></button></div>
+        <div class="hud-pad"></div>
+      </div>
+      <div class="overlay" id="pauseOverlay" hidden><p>Paused<small>Press P to continue</small></p></div>
+      <div class="overlay" id="mapToast" hidden><p><span class="toast-name"></span><small class="toast-desc"></small></p></div>
+      <div class="wavebar" id="waveBar" hidden><span id="waveText"></span><span class="boss-track" id="bossTrack" hidden><span class="boss-fill" id="bossFill"></span></span></div>
+      <div class="finish" id="finishPanel" hidden role="dialog" aria-labelledby="finishTitle">
+        <div class="finish-box">
+          <h2 id="finishTitle">You escaped the starship!</h2>
+          <p class="finish-time" id="finishTime"></p>
+          <p class="finish-sub" id="finishSub"></p>
+          <button class="btn" id="finishRestart" type="button">Restart <kbd>R</kbd></button>
+        </div>
+      </div>
+      <div class="finish" id="levelPanel" hidden role="dialog" aria-labelledby="levelTitle">
+        <div class="finish-box">
+          <h2 id="levelTitle">Starship: choose a level</h2>
+          <p class="finish-sub">Pick where to start. Click a level or press 1 to 5.</p>
+          <div class="lvl-row" id="levelRow"></div>
+        </div>
+      </div>
+      <div class="picker" id="picker" hidden role="dialog" aria-labelledby="pickerTitle">
+        <div class="picker-box">
+          <div class="picker-head"><h2 id="pickerTitle">Choose a map</h2><span class="picker-seed" id="pickerSeed"></span></div>
+          <div class="map-grid" id="mapGrid"></div>
+          <div class="picker-foot">
+            <span class="picker-hint"><kbd>A</kbd><kbd>D</kbd><kbd>W</kbd><kbd>S</kbd>move <kbd>Space</kbd>play <kbd>Q</kbd>close</span>
+            <span class="picker-actions">
+              <button class="pbtn" id="pickerShuffle" type="button">New seed</button>
+              <button class="pbtn" id="pickerClose" type="button">Close</button>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="start" id="startScreen" hidden role="dialog" aria-modal="true" aria-labelledby="startTitle">
+        <div class="start-box">
+          <h2 class="start-title" id="startTitle">New game</h2>
+          <section class="start-row">
+            <h3 class="start-label" id="lblPlayers">Players</h3>
+            <div class="seg" role="group" aria-labelledby="lblPlayers">
+              <button class="seg-btn" type="button" data-players="1" aria-pressed="false"><span class="seg-ico"></span><span><b>1 player</b><small>Fly alone. WASD or the arrows steer.</small></span></button>
+              <button class="seg-btn" type="button" data-players="2" aria-pressed="false"><span class="seg-ico"></span><span><b>2 players</b><small>Split screen. WASD against the arrows.</small></span></button>
+            </div>
+          </section>
+          <section class="start-row">
+            <h3 class="start-label">Skins</h3>
+            <div class="skins" id="skinRows"></div>
+          </section>
+          <section class="start-row">
+            <h3 class="start-label" id="lblMap">Map</h3>
+            <div class="start-maps" id="startMaps" role="group" aria-labelledby="lblMap"></div>
+          </section>
+          <div class="start-foot">
+            <span class="start-hint"><kbd>Enter</kbd>start <kbd>N</kbd>new game during play</span>
+            <span class="start-actions">
+              <button class="pbtn" id="startBack" type="button" hidden>Back to game</button>
+              <button class="start-go" id="startGo" type="button">Start game</button>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="load-error" id="loadError" hidden><p>The game engine didn’t load. Reload the page; if it keeps failing, check the browser console for errors.</p></div>
+    </div>
+    <aside class="panel" id="panel" aria-label="Tuning panel">
+      <p class="panel-note">Changes apply instantly. Click the game to give the keyboard back to the ships.</p>
+    </aside>
+  </div>
+</div>
+
+<dialog id="jsonDialog" aria-labelledby="jsonTitle">
+  <h2 id="jsonTitle">Tuning as JSON</h2>
+  <p>Copy this to keep or share a tuning, or paste one in and apply it.</p>
+  <textarea id="jsonText" spellcheck="false" aria-label="Tuning JSON"></textarea>
+  <div class="dialog-row">
+    <span class="dialog-msg" id="jsonMsg"></span>
+    <span style="display:flex;gap:8px">
+      <button class="btn" id="jsonApply" type="button">Apply pasted JSON</button>
+      <button class="btn" id="jsonClose" type="button">Close</button>
+    </span>
+  </div>
+</dialog>
+
+<script>
+  setTimeout(function () {
+    if (!window.__duelStarted) document.getElementById('loadError').hidden = false;
+  }, 8000);
+</script>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
