@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { P } from '../../config.js';
-import { approach, clamp, wrapAngle } from '../../util/math.js';
+import { approach, clamp, segDist, wrapAngle } from '../../util/math.js';
 import { H, solidAt, W } from '../../level/mask.js';
 import { stage } from '../../render/scene.js';
 import { shapeGeo, SHIP_RADIUS, ships } from '../../ships/ship.js';
@@ -8,16 +8,16 @@ import { addShake, damage, shipMass } from '../../ships/physics.js';
 import { EMBER, FIRE, WHITE } from '../../fx/pools.js';
 import { emit } from '../../fx/particles.js';
 import { emitSmoke } from '../../fx/smoke.js';
-import { showToast } from '../floors.js';
+import { showToast } from '../floors/floors.js';
 import { ENEMY_RED } from '../starship/constants.js';
-import { finishRun, killEnemy, nearestPlayer, segDist, SH, SHIP_GROUP, spawnEnemy, startLaser } from '../starship/starship.js';
+import { finishRun, killEnemy, nearestPlayer, SH, SHIP_GROUP, spawnEnemy, startLaser } from '../starship/starship.js';
 import { RB, rbLocal, rbRest, rbShoulder, ROBOT_DUST, ROBOT_HIP, ROBOT_MAXHP, ROBOT_ORANGE, ROBOT_REACH, ROBOT_XMIN, robotAngry, robotEye, robotStage } from './hangar.js';
 
 // The hangar's giant robot: behaviour, damage, breaking apart, cutscene and drawing.
 export function resetRobot() {
   clearDebris();
   cutscene(false);
-  RB.stage = 0; RB.rot = 0; RB.rotV = 0; RB.fd = 1; RB.kneel = 0; RB.down = false; RB.ct = 0; RB.downT = 0; RB.titleShown = false; RB.finished = false; RB.combo = null; RB.camZ = RB.camZ || 1;
+  RB.stage = 0; RB.rot = 0; RB.rotV = 0; RB.fd = 1; RB.kneel = 0; RB.down = false; RB.ct = 0; RB.downT = 0; RB.titleShown = false; RB.finished = false; RB.combo = null;
   const R = RB.mesh;
   if (R) {
     const D = R.dmg;

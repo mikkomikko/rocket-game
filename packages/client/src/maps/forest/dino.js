@@ -8,7 +8,7 @@ import { addShake, kill } from '../../ships/physics.js';
 import { DUST, WHITE } from '../../fx/pools.js';
 import { emit } from '../../fx/particles.js';
 import { emitSmoke } from '../../fx/smoke.js';
-import { groundRGB } from './plants.js';
+import { groundRGB } from '../index.js';
 
 // The dinosaur: a small cyan T-rex with black eyes, built from flat shapes. Faces +x; feet at y = 0.
 export const DINO_S = 0.85, DINO_SPEED = 330, DINO_EVERY = 10;

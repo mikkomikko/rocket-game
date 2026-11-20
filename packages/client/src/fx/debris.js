@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { clamp } from '../util/math.js';
-import { level, maskAt, solidAt } from '../level/mask.js';
+import { maskAt, solidAt } from '../level/mask.js';
 import { scene } from '../render/scene.js';
 import { EMBER, pointScale, WHITE } from './pools.js';
 import { emit } from './particles.js';
-import { groundRGB } from '../maps/forest/plants.js';
+import { activeMap, groundRGB } from '../maps/index.js';
 
 /* ------------------------------------------------------------------ *
  * Terrain debris: solid bits (normal blending, so dark rock still shows) that fly, bounce and settle,
@@ -158,10 +158,7 @@ export function surfaceAt(x, y) {
   return { solid, hard: hard * 2 > solid, nx: l > 1e-3 ? nx / l : 0, ny: l > 1e-3 ? ny / l : 1 };
 }
 export function terrainMaterial(hard) {
-  if (hard || level.theme === 'floors' || level.theme === 'ship') return 'metal';
-  if (level.theme === 'forest') return 'soil';
-  if (level.theme === 'desert') return 'sand';
-  return 'rock';
+  return hard ? 'metal' : activeMap().material || 'rock';
 }
 const rnd = (a, b) => a + Math.random() * (b - a);
 const jitter = (c, j) => c.map((v) => v * (1 + (Math.random() - 0.5) * j));

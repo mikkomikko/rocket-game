@@ -8,11 +8,9 @@ import { dust } from '../fx/explosions.js';
 import { terrainDebris } from '../fx/debris.js';
 import { emit } from '../fx/particles.js';
 import { emitSmoke } from '../fx/smoke.js';
-import { resetLava } from '../maps/floors.js';
-import { SH } from '../maps/starship/starship.js';
-import { RB } from '../maps/hangar/hangar.js';
 import { stepBigLaser } from './bigLaser.js';
 import { sfx } from '../audio/sfx.js';
+import { activeMap } from '../maps/index.js';
 
 // Ship physics: mass, landing, damage and respawn, terrain collision and ship-vs-ship bumps.
 export const shipMass = (s) => P.mass + s.ammo * P.ammoWeight + (s.ballT > 0 ? BALL_MASS : 0);
@@ -47,7 +45,7 @@ function supported(s) {
 export function addShake(s, amount) { s.cam.shake = Math.max(s.cam.shake, amount * P.shake); }
 
 export function damage(s, amount) {
-  if (!s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage) || (level.theme === 'ship' && RB.cut)) return;
+  if (!s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage) || activeMap().shipsSafe?.()) return;
   s.hp -= amount;
   addShake(s, Math.min(1, amount / 30));
   if (s.hp <= 0) { s.hp = 0; kill(s); }
@@ -64,8 +62,8 @@ export function kill(s, eaten = false) {
   s.thrust = 0;
   s.group.visible = false;
   const other = ships[1 - s.id];
-  if (!isPractice() && level.theme !== 'floors' && level.theme !== 'ship') other.score++;   // in Floors and Starship you score another way
-  if (level.theme === 'ship') SH.deaths++;
+  if (!isPractice() && !activeMap().coop) other.score++;   // in Floors and Starship you score another way
+  activeMap().onKill?.(s);
   const how = eaten === true ? 'eaten' : (eaten || '');
   s.eaten = how === 'eaten';
   s.lava = how === 'lava';
@@ -103,7 +101,7 @@ export function respawn(s) {
   s.vx = 0; s.vy = 0; s.a = 0; s.pa = 0; s.av = 0; s.thrust = 0;
   s.hp = 100; s.ammo = P.ammoMax;
   s.landed = !air; s.onPad = !isPractice(); s.alive = true; s.active = true; s.lastImpact = 0; s.eaten = false; s.lava = false; s.minigunT = 0; s.frozenT = 0; s.ballT = 0;
-  if (level.theme === 'floors') resetLava(s.id);
+  activeMap().onRespawn?.(s);
   s.invulnT = P.invulnTime; s.fireCd = 0.2;
   s.cam.x = s.x; s.cam.y = s.y;
   s.group.visible = true;

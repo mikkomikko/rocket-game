@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import { P } from '../config.js';
-import { mulberry32 } from '../util/math.js';
-import { H, level, paintRegion, W } from '../level/mask.js';
-import { glowMat, LAVA_VS, NOISE_GLSL, scene } from '../render/scene.js';
-import { SHIP_RADIUS, ships } from '../ships/ship.js';
-import { addShake, damage, kill } from '../ships/physics.js';
-import { EMBER, FIRE, WHITE } from '../fx/pools.js';
-import { emit } from '../fx/particles.js';
-import { emitSmoke } from '../fx/smoke.js';
-import { rebuildCave } from '../game/modes.js';
+import { P } from '../../config.js';
+import { mulberry32 } from '../../util/math.js';
+import { H, level, paintRegion, W } from '../../level/mask.js';
+import { glowMat, LAVA_VS, NOISE_GLSL, scene } from '../../render/scene.js';
+import { SHIP_RADIUS, ships } from '../../ships/ship.js';
+import { addShake, damage, kill } from '../../ships/physics.js';
+import { EMBER, FIRE, WHITE } from '../../fx/pools.js';
+import { emit } from '../../fx/particles.js';
+import { emitSmoke } from '../../fx/smoke.js';
+import { rebuildCave } from '../../game/modes.js';
 
 /* ------------------------------------------------------------------ *
  * Floors: a race up two hallways with lava rising behind you

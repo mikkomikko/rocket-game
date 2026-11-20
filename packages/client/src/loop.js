@@ -10,11 +10,6 @@ import { stepBullets } from './fx/bullets.js';
 import { stepTerrainBits } from './fx/debris.js';
 import { stepParticles } from './fx/particles.js';
 import { stepSmoke } from './fx/smoke.js';
-import { drawDino, stepDino } from './maps/forest/dino.js';
-import { drawPickup, stepPickup } from './maps/forest/pickup.js';
-import { drawWorm, stepWorm } from './maps/desert/worm.js';
-import { drawFloors, stepFloors } from './maps/floors.js';
-import { drawStarship, stepStarship } from './maps/starship/starship.js';
 import { drawBoxes, stepBoxes } from './systems/boxes.js';
 import { drawBigLasers } from './ships/bigLaser.js';
 import { keysDown, padsSeen, prettyKey, readInputs } from './input.js';
@@ -23,6 +18,7 @@ import { drawDebug, drawPools } from './render/draw.js';
 import { updateHud } from './ui/hud.js';
 import { sfx } from './audio/sfx.js';
 import { updateWeaponBoxes } from './ui/weaponBox.js';
+import { activeMap, allMaps } from './maps/index.js';
 
 // The fixed-step simulation (step) and the render loop (frame).
 function step(h) {
@@ -35,10 +31,7 @@ function step(h) {
   stepParticles(h);
   stepTerrainBits(h);
   stepSmoke(h);
-  if (level.theme === 'forest') { stepDino(h); stepPickup(h); }
-  if (level.theme === 'desert') stepWorm(h);
-  if (level.theme === 'floors') stepFloors(h);
-  if (level.theme === 'ship') stepStarship(h);
+  activeMap().step?.(h);
   stepBoxes(h);
 }
 
@@ -97,12 +90,8 @@ function frame(now) {
     }
     drawDebug(s, alpha);
   }
-  drawDino(alpha);
-  drawWorm(alpha);
-  drawPickup(now);
+  for (const m of allMaps()) m.draw?.(now, alpha);
   drawBoxes(now);
-  drawFloors(now);
-  drawStarship(now);
   drawBigLasers(now);
   gridMesh.visible = isPractice() && PR.grid;
   pointScale.value = P.zoom * renderer.getPixelRatio();

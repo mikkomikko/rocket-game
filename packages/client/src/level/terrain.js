@@ -1,7 +1,7 @@
 import { P } from '../config.js';
 import { clamp, fbm, mulberry32, vnoise } from '../util/math.js';
 import { carveDiskMask, farFrom, fillBlob, fillGround, H, level, mirrorLeft, W } from './mask.js';
-import { FL } from '../maps/floors.js';
+import { FL } from '../maps/floors/floors.js';
 import { SH } from '../maps/starship/starship.js';
 import { terrainHangar } from '../maps/hangar/hangar.js';
 

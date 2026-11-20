@@ -6,7 +6,7 @@ import { shapeGeo, ships } from '../../ships/ship.js';
 import { WHITE } from '../../fx/pools.js';
 import { emit } from '../../fx/particles.js';
 import { topBelow } from './plants.js';
-import { showToast } from '../floors.js';
+import { showToast } from '../floors/floors.js';
 
 // The minigun pickup: floats on the middle island. Fly into it for 30 s of very fast fire.
 export const MINIGUN_TIME = 30, MINIGUN_RATE = 4, MINIGUN_BACK = 20;

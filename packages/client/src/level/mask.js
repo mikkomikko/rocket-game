@@ -108,7 +108,7 @@ export function carveDiskMask(cx, cy, r, paint) {
 }
 // World-space crater (used by bullets and explosions).
 export function carve(x, y, r) {
-  if (carveDiskMask(x, H - y, r, true) && (level.theme === 'forest' || level.theme === 'desert')) levelHooks.carved(x, y, r);
+  if (carveDiskMask(x, H - y, r, true)) levelHooks.carved(x, y, r);
 }
 
 /* Map styles. Each one fills the mask with rock (1) in mask coordinates (x = column, y = row);

@@ -1,6 +1,5 @@
 import { isPractice, isSolo, P } from '../config.js';
 import { game } from '../state.js';
-import { level } from '../level/mask.js';
 import { buildLevel } from '../level/generate.js';
 import { stage } from '../render/scene.js';
 import { ships } from '../ships/ship.js';
@@ -8,23 +7,18 @@ import { respawn } from '../ships/physics.js';
 import { clearBullets } from '../fx/bullets.js';
 import { DB } from '../fx/debris.js';
 import { PT } from '../fx/particles.js';
-import { resetDino } from '../maps/forest/dino.js';
-import { resetPickup } from '../maps/forest/pickup.js';
-import { resetWorm } from '../maps/desert/worm.js';
-import { resetStarship } from '../maps/starship/starship.js';
 import { resetBoxes } from '../systems/boxes.js';
 import { closePicker } from '../ui/mapPicker.js';
 import { fLevel, fPractice } from '../ui/tuningPanel.js';
+import { activeMap } from '../maps/index.js';
 
 // Match flow: restart, rebuild the map, and switch between duel, solo and practice.
 export function restartMatch() {
   game.matchClock = 0;
   for (const s of ships) { s.bigLaser = 1; s.beam = null; }   // a new match: one Big laser shot each
   for (const s of ships) { s.score = 0; respawn(s); }
-  resetDino(); resetWorm();
-  resetPickup();
+  activeMap().reset?.();
   resetBoxes();
-  if (level.theme === 'ship') resetStarship();
   if (isSolo()) deactivate(ships[1]);
   clearBullets();
   PT.on.fill(0); DB.on.fill(0);

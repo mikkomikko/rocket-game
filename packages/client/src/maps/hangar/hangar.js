@@ -4,7 +4,7 @@ import { H, level, W } from '../../level/mask.js';
 import { fillPolyMask } from '../../level/terrain.js';
 import { glowMat } from '../../render/scene.js';
 import { shapeGeo } from '../../ships/ship.js';
-import { canvasTex, girderMat, stripedPlane } from '../floors.js';
+import { canvasTex, girderMat, stripedPlane } from '../floors/floors.js';
 import { backWallMat, resetStarship, SH, SHIP_GROUP } from '../starship/starship.js';
 import { buildAmmo, buildMedkits } from '../starship/supplies.js';
 import { makeRobotMesh } from './robotMesh.js';

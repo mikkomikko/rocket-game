@@ -6,8 +6,7 @@ import { H, level, W } from '../level/mask.js';
 import { glowMat, renderer, scene, skyMesh, stage } from './scene.js';
 import { shapeGeo, ships } from '../ships/ship.js';
 import { ENEMY_RED } from '../maps/starship/constants.js';
-import { SH } from '../maps/starship/starship.js';
-import { RB, rbLocal } from '../maps/hangar/hangar.js';
+import { activeMap } from '../maps/index.js';
 
 /* ------------------------------------------------------------------ *
  * Cameras, split screen and the loop
@@ -82,9 +81,10 @@ const enemyArrows = [0, 1].map((i) => Array.from({ length: 14 }, () => {
 function updateEnemyArrows(i, cx, cy, hw, hh) {
   const list = enemyArrows[i];
   let n = 0;
-  if (level.theme === 'ship' && ships[i].active) {
+  const enemies = ships[i].active && activeMap().enemies?.();
+  if (enemies) {
     const k = 1 / P.zoom, m = 22 * k;
-    for (const e of SH.enemies) {
+    for (const e of enemies) {
       if (e.dead || n >= list.length) continue;
       const dx = e.x - cx, dy = e.y - cy;
       if (Math.abs(dx) < hw && Math.abs(dy) < hh) continue;   // already on screen
@@ -99,6 +99,7 @@ function updateEnemyArrows(i, cx, cy, hw, hh) {
   for (; n < list.length; n++) list[n].visible = false;
 }
 
+let camZ = 1;   // extra zoom while a map's camera focus is on
 export function updateCamera(i, rect, dt, alpha) {
   const s = ships[i], cam = cams[i], c = s.cam;
   let tx, ty;
@@ -106,12 +107,12 @@ export function updateCamera(i, rect, dt, alpha) {
     tx = s.px + (s.x - s.px) * alpha + s.vx * P.lookahead;
     ty = s.py + (s.y - s.py) * alpha + s.vy * P.lookahead;
   } else { tx = s.deathX; ty = s.deathY; }
-  const cut = level.theme === 'ship' && RB.cut;
-  if (cut) [tx, ty] = rbLocal(0, 260);   // the robot's last moments: every camera turns to watch it fall
-  RB.camZ = approach(RB.camZ || 1, cut ? 0.78 : 1, dt * 0.6);
-  const k = P.cameraLag > 0.001 ? 1 - Math.exp(-dt / (cut ? Math.max(P.cameraLag, 0.35) : P.cameraLag)) : 1;
+  const focus = activeMap().cameraFocus?.();
+  if (focus) [tx, ty] = focus;
+  camZ = approach(camZ, focus ? 0.78 : 1, dt * 0.6);
+  const k = P.cameraLag > 0.001 ? 1 - Math.exp(-dt / (focus ? Math.max(P.cameraLag, 0.35) : P.cameraLag)) : 1;
   c.x += (tx - c.x) * k; c.y += (ty - c.y) * k;
-  const zz = P.zoom * RB.camZ;
+  const zz = P.zoom * camZ;
   const hw = rect.w / zz / 2, hh = rect.h / zz / 2;
   const cx = hw * 2 >= W ? W / 2 : clamp(c.x, hw, W - hw);
   const cy = hh * 2 >= H ? H / 2 : clamp(c.y, hh, H - hh);

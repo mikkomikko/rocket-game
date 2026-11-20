@@ -5,7 +5,7 @@ import { glowMat } from '../../render/scene.js';
 import { ships } from '../../ships/ship.js';
 import { WHITE } from '../../fx/pools.js';
 import { emit } from '../../fx/particles.js';
-import { canvasTex } from '../floors.js';
+import { canvasTex } from '../floors/floors.js';
 import { SH, SHIP_GROUP } from './starship.js';
 
 // Ammo boxes: fly into one to refill your ammo; each comes back 12 seconds after it is taken.

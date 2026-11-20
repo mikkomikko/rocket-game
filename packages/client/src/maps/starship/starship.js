@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { P } from '../../config.js';
-import { clamp, wrapAngle } from '../../util/math.js';
+import { clamp, segDist, wrapAngle } from '../../util/math.js';
 import { H, level, paintRegion, solidAt, W } from '../../level/mask.js';
 import { glowMat, LAVA_VS, scene } from '../../render/scene.js';
 import { shapeGeo, SHIP_RADIUS, ships } from '../../ships/ship.js';
@@ -9,7 +9,7 @@ import { FIRE, WHITE } from '../../fx/pools.js';
 import { spawnBullet } from '../../fx/bullets.js';
 import { emit } from '../../fx/particles.js';
 import { emitSmoke } from '../../fx/smoke.js';
-import { canvasTex, girderMat, showToast, stripedPlane } from '../floors.js';
+import { canvasTex, girderMat, showToast, stripedPlane } from '../floors/floors.js';
 import { EKIND, ENEMY_RED, LASER_DAMAGE, LASER_FIRE, LASER_WARN, WAVES } from './constants.js';
 import { AM, buildAmmo, buildMedkits, MK, stepAmmo, stepMedkits } from './supplies.js';
 import { buildHangar, RB, ROBOT_MAXHP, robotEye } from '../hangar/hangar.js';
@@ -76,10 +76,6 @@ function laserLength(ox, oy, ang) {
   let d = 0;
   while (d < 2600 && !solidAt(ox + dx * d, oy + dy * d)) d += 5;
   return d;
-}
-export function segDist(px, py, ox, oy, ang, len) {
-  const dx = Math.cos(ang), dy = Math.sin(ang), t = clamp((px - ox) * dx + (py - oy) * dy, 0, len);
-  return Math.hypot(px - (ox + dx * t), py - (oy + dy * t));
 }
 function disposeTree(o) {
   o.traverse((c) => {

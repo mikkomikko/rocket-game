@@ -1,6 +1,6 @@
 import { BALL_IDX, BALL_R, P, WEAPONS } from '../config.js';
 import { game } from '../state.js';
-import { level, solidAt } from '../level/mask.js';
+import { solidAt } from '../level/mask.js';
 import { SHIP_RADIUS, ships } from '../ships/ship.js';
 import { damage, shipMass } from '../ships/physics.js';
 import { ballPop, ballShip } from '../ships/weapons.js';
@@ -9,12 +9,8 @@ import { TR, trailPoint } from './trails.js';
 import { explode, freezeShip, iceBurst } from './explosions.js';
 import { emit } from './particles.js';
 import { emitSmoke, SM } from './smoke.js';
-import { dinoHit, killDino } from '../maps/forest/dino.js';
-import { SAND } from '../maps/desert/plants.js';
-import { hurtWorm, wormHit } from '../maps/desert/worm.js';
-import { bulletHitsRock } from '../maps/floors.js';
-import { bulletHitsEnemy } from '../maps/starship/starship.js';
 import { sfx } from '../audio/sfx.js';
+import { activeMap } from '../maps/index.js';
 
 // Bullets: spawning, flight and hits on terrain, ships, enemies and map creatures.
 export function spawnBullet(owner, x, y, vx, vy, life, kind = 0) {
@@ -31,6 +27,7 @@ export function spawnBullet(owner, x, y, vx, vy, life, kind = 0) {
 export function clearBullets() { B.on.fill(0); SM.on.fill(0); TR.life.fill(0); }
 
 export function stepBullets(h) {
+  const map = activeMap();
   for (let i = 0; i < MAXB; i++) {
     if (!B.on[i]) continue;
     const kind = B.kind[i], wp = WEAPONS[kind];
@@ -52,27 +49,16 @@ export function stepBullets(h) {
     for (let k = 0; k < n; k++) {
       B.x[i] += dx / n; B.y[i] += dy / n;
       const x = B.x[i], y = B.y[i];
-      if (solidAt(x, y) || (level.theme === 'floors' && bulletHitsRock(x, y))) {
+      if (solidAt(x, y) || map.blocksShot?.(x, y)) {
         if (kind === 2) iceBurst(x, y, 10); else if (kind === BALL_IDX) { ballPop(x, y, 10); sfx.rock(x, y); } else explode(x, y, kind, B.owner[i]);
         B.on[i] = 0; break;
       }
-      const wh = wormHit(x, y);
-      if (wh) {
-        if (wh === 2) hurtWorm(); else for (let j = 0; j < 5; j++) emit(x, y, (Math.random() - 0.5) * 120, Math.random() * 100, 0.4, SAND, 1, 2 + Math.random() * 3);
-        if (kind === 1) explode(x, y, 1, B.owner[i]);
-        B.on[i] = 0; break;
-      }
-      if (dinoHit(x, y)) {
-        killDino();
-        if (kind === 1) explode(x, y, 1, B.owner[i]);
-        B.on[i] = 0; break;
-      }
-      if (level.theme === 'ship' && B.owner[i] < 2 && bulletHitsEnemy(B.owner[i], x, y, P.bulletDamage * wp.damage, kind)) {
+      if (map.bulletHit?.(x, y, B.owner[i], P.bulletDamage * wp.damage, kind)) {
         if (kind === 1) explode(x, y, 1, B.owner[i]);
         B.on[i] = 0; break;
       }
       for (const s of ships) {
-        if (s.id === B.owner[i] || !s.alive || ((level.theme === 'floors' || level.theme === 'ship') && B.owner[i] < 2)) continue;
+        if (s.id === B.owner[i] || !s.alive || (map.coop && B.owner[i] < 2)) continue;
         const r = (s.ballT > 0 ? BALL_R : SHIP_RADIUS) * P.shipSize + 2;
         if ((x - s.x) ** 2 + (y - s.y) ** 2 < r * r) {
           const sp = Math.hypot(B.vx[i], B.vy[i]) || 1;

@@ -29,4 +29,9 @@ export function vnoise(x, y, seed) {
 export function fbm(x, y, seed) {
   return (vnoise(x, y, seed) * 0.5 + vnoise(x * 2.03, y * 2.03, seed + 17) * 0.25 + vnoise(x * 4.1, y * 4.1, seed + 31) * 0.125) / 0.875;
 }
+// Distance from point (px, py) to the segment that starts at (ox, oy), heads along ang and is len long.
+export function segDist(px, py, ox, oy, ang, len) {
+  const dx = Math.cos(ang), dy = Math.sin(ang), t = clamp((px - ox) * dx + (py - oy) * dy, 0, len);
+  return Math.hypot(px - (ox + dx * t), py - (oy + dy * t));
+}
 export const hexRGB = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];

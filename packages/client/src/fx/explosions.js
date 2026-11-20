@@ -1,18 +1,14 @@
 import * as THREE from 'three';
 import { isPractice, P, PR, WEAPONS } from '../config.js';
 import { clamp } from '../util/math.js';
-import { carve, level } from '../level/mask.js';
+import { carve } from '../level/mask.js';
 import { ships } from '../ships/ship.js';
 import { addShake, damage, shipMass } from '../ships/physics.js';
 import { DUST, EMBER, FIRE, ICE_COL, WHITE } from './pools.js';
 import { spray, surfaceAt, terrainDebris, terrainMaterial } from './debris.js';
 import { emit } from './particles.js';
 import { emitSmoke } from './smoke.js';
-import { groundRGB } from '../maps/forest/plants.js';
-import { hitBreakable } from '../maps/floors.js';
-import { killEnemy, SH } from '../maps/starship/starship.js';
-import { RB } from '../maps/hangar/hangar.js';
-import { hurtRobot } from '../maps/hangar/robot.js';
+import { activeMap, groundRGB } from '../maps/index.js';
 import { sfx } from '../audio/sfx.js';
 
 // Ice shots don't dig: they shatter into frost.
@@ -34,14 +30,14 @@ export function freezeShip(s) {
 }
 // The Cannon shell: a big crater, splash damage and a shove for any ship nearby.
 function bigBlast(x, y, owner, direct) {
-  const wp = WEAPONS[1];
+  const wp = WEAPONS[1], map = activeMap();
   sfx.blast(x, y);
-  if (level.theme === 'floors') { for (let k = 0; k < 6; k++) hitBreakable(x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 30); }
+  if (map.breakAt) { for (let k = 0; k < 6; k++) map.breakAt(x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 30); }
   else if (P.destructible) carve(x, y, P.holeRadius * wp.hole);
   const R = wp.blast;
   for (const s of ships) {
     if (!s.active || !s.alive || s === direct) continue;
-    if ((level.theme === 'floors' || level.theme === 'ship') && owner < 2) continue;
+    if (map.coop && owner < 2) continue;
     const ddx = s.x - x, ddy = s.y - y, d = Math.hypot(ddx, ddy);
     if (d > R) continue;
     const f = 1 - d / R;   // falloff; your own ship takes half
@@ -50,14 +46,7 @@ function bigBlast(x, y, owner, direct) {
     s.vx += (ddx / (d || 1)) * push; s.vy += (ddy / (d || 1)) * push;
     s.landed = false;
   }
-  if (level.theme === 'ship') {
-    for (const e of SH.enemies) {
-      if (e.dead) continue;
-      const d = Math.hypot(e.x - x, e.y - y);
-      if (d < R + e.K.r) { e.hp -= P.bulletDamage * wp.damage * 0.5; e.flash = 0.08; if (e.hp <= 0 && owner < 2) killEnemy(e, ships[owner]); }
-    }
-    if (SH.spec && SH.spec.mode === 'robot' && owner < 2 && RB.on && !RB.dead && Math.hypot(RB.x - x, RB.y + 300 - y) < R + 150) hurtRobot(P.bulletDamage * wp.damage * 0.5, ships[owner]);
-  }
+  map.blastHit?.(x, y, R, owner, P.bulletDamage * wp.damage * 0.5);
   for (const s of ships) if (s.active && s.alive) {
     const d = Math.hypot(s.x - x, s.y - y);
     if (d < 500) addShake(s, 1.1 * (1 - d / 500));
@@ -77,7 +66,7 @@ export function explode(x, y, kind = 0, owner = -1, direct = null) {
   if (kind !== 1) sfx.rock(x, y);
   terrainDebris(x, y, kind === 1 ? 2.6 : 1);
   if (kind === 1) bigBlast(x, y, owner, direct);
-  else if (level.theme === 'floors') hitBreakable(x, y);   // Floors walls can't be shot; only the orange blocks break
+  else if (activeMap().breakAt) activeMap().breakAt(x, y);   // Floors walls can't be shot; only the orange blocks break
   else if (P.destructible) carve(x, y, P.holeRadius);
   const rc = groundRGB(y);
   DUST.setRGB(rc[0] / 255 * 1.6, rc[1] / 255 * 1.6, rc[2] / 255 * 1.6, THREE.SRGBColorSpace);

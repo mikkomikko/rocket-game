@@ -6,7 +6,8 @@ import { glowMat, scene } from '../render/scene.js';
 import { ships } from '../ships/ship.js';
 import { WHITE } from '../fx/pools.js';
 import { emit } from '../fx/particles.js';
-import { canvasTex } from '../maps/floors.js';
+import { canvasTex } from '../maps/floors/floors.js';
+import { activeMap } from '../maps/index.js';
 
 /* ------------------------------------------------------------------ *
  * Floating supply boxes on every map: ammo, health (+50) and crosshair (30 s).
@@ -73,7 +74,7 @@ function findBoxSpots() {
     }
   }
   // Floors: the orange blocks seal each hallway until they are shot, so the whole hallway counts.
-  if (level.theme === 'floors') seen.set(free);
+  if (activeMap().sealedHalls) seen.set(free);
   const clear = (x, y, R) => {
     for (const r of [R * 0.35, R * 0.7, R]) for (let a = 0; a < 12; a++) {
       if (solidAt(x + Math.cos(a * Math.PI / 6) * r, y + Math.sin(a * Math.PI / 6) * r)) return false;

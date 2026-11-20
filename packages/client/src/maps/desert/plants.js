@@ -7,7 +7,6 @@ import { addBlob, addStrip, backPlants, lighter, pickOf, plants, rebuildFrontPla
 /* ------------------------------------------------------------------ *
  * Dune sea: cacti, bones and the giant sandworm
  * ------------------------------------------------------------------ */
-export const DESERT_SAND = [222, 170, 112];
 export const SAND = new THREE.Color('#e3b47c'), SAND_DK = new THREE.Color('#b98552'), FLESH = new THREE.Color('#ef8a96');
 const dcol = (hex, back, rng) => new THREE.Color(back ? '#4c2c46' : hex).multiplyScalar(0.85 + rng() * 0.3);
 function saguaro(b, x, y, rng, k, back) {

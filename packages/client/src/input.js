@@ -1,15 +1,14 @@
 import { isPractice, isSolo, P } from './config.js';
 import { game } from './state.js';
 import { clamp } from './util/math.js';
-import { level } from './level/mask.js';
 import { ships } from './ships/ship.js';
 import { cycleWeapon } from './ships/weapons.js';
-import { chooseLevel, restartStarship, SH } from './maps/starship/starship.js';
 import { restartMatch } from './game/modes.js';
 import { togglePanel, togglePause, toggleUI } from './ui/header.js';
 import { nextMap, picker, pickerKey } from './ui/mapPicker.js';
 import { pane } from './ui/tuningPanel.js';
 import { openStart, startEl, startKey } from './ui/startScreen.js';
+import { activeMap } from './maps/index.js';
 
 /* ------------------------------------------------------------------ *
  * Input: keyboard and gamepads merged into one action state per player
@@ -44,9 +43,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyU' && !e.repeat) { e.preventDefault(); toggleUI(); }
   if (e.code === 'KeyN' && !e.repeat) { e.preventDefault(); openStart(); }
   if (e.code === 'KeyR' && !e.repeat && isPractice()) { e.preventDefault(); restartMatch(); }
-  if (e.code === 'KeyR' && !e.repeat && level.theme === 'ship' && SH.state === 'done') { e.preventDefault(); restartStarship(); }
-  const digit = /^(?:Digit|Numpad)([1-5])$/.exec(e.code);
-  if (digit && !e.repeat && level.theme === 'ship' && SH.state === 'choose') { e.preventDefault(); chooseLevel(+digit[1]); }
+  if (!e.repeat && activeMap().keydown?.(e)) e.preventDefault();
   if (e.code === 'KeyQ' && !e.repeat && !isPractice()) { e.preventDefault(); nextMap(); }
 });
 window.addEventListener('keyup', (e) => { keysDown.delete(e.code); });

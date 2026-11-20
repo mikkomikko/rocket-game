@@ -2,7 +2,7 @@ import { isPractice, P } from '../config.js';
 import { mulberry32 } from '../util/math.js';
 import { carveDiskMask, H, level, paintRegion, resizeWorld, W } from './mask.js';
 import { MAPS } from './terrain.js';
-import { applyTheme } from '../maps/theme.js';
+import { applyTheme } from '../maps/index.js';
 import { updateMapButton } from '../ui/mapPicker.js';
 
 // Level building: runs the chosen map's terrain generator, or an empty arena for practice.

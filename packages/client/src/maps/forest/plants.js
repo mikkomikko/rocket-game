@@ -1,16 +1,13 @@
 import * as THREE from 'three';
 import { P } from '../../config.js';
 import { clamp, mulberry32 } from '../../util/math.js';
-import { H, level, levelHooks, rowColor, solidAt, W } from '../../level/mask.js';
+import { H, level, solidAt, W } from '../../level/mask.js';
 import { scene } from '../../render/scene.js';
 import { emit } from '../../fx/particles.js';
-import { DESERT_SAND } from '../desert/plants.js';
 
 /* ------------------------------------------------------------------ *
  * Forest planet: Jurassic plants and the cyan dinosaur
  * ------------------------------------------------------------------ */
-const FOREST_SOIL = [104, 84, 56];
-export function groundRGB(y) { return level.theme === 'forest' ? FOREST_SOIL : level.theme === 'desert' ? DESERT_SAND : rowColor[clamp(Math.floor(H - y), 0, H - 1)]; }
 const LEAF = new THREE.Color('#5fbf55');
 
 // Plants: one vertex-coloured mesh per layer, rebuilt when a crater uproots a plant.
@@ -24,6 +21,10 @@ function plantLayer(z) {
   return m;
 }
 export const backPlants = plantLayer(-0.6), frontPlants = plantLayer(0.4);
+export function clearPlants() {
+  plants.length = 0;
+  backPlants.visible = frontPlants.visible = false;
+}
 export let plants = [];
 const PCOL = { trunk: '#5a4128', fern: '#2f8a43', cycad: '#4f9d3f', horse: '#7fae45', node: '#3f5f22', conifer: '#1f5e3c', cone: '#a0663a', back: '#123430' };
 const tint = (hex, back, rng) => new THREE.Color(back ? PCOL.back : hex).multiplyScalar(0.85 + rng() * 0.3);
@@ -286,7 +287,7 @@ export function topBelow(x, y) {
   return y + 1;
 }
 // A crater under a plant knocks it over in a burst of leaves.
-function plantsAfterCarve(x, y, r) {
+export function plantsAfterCarve(x, y, r) {
   let changed = false;
   for (const p of plants) {
     if (!p.alive || Math.abs(p.x - x) > r + 6 || Math.abs(p.y - y) > r + 8) continue;
@@ -297,4 +298,3 @@ function plantsAfterCarve(x, y, r) {
   }
   if (changed) rebuildFrontPlants();
 }
-levelHooks.carved = plantsAfterCarve;

@@ -1,20 +1,16 @@
 import * as THREE from 'three';
 import { isPractice, P, PR, WEAPONS } from '../config.js';
-import { carve, level, maskAt, solidAt } from '../level/mask.js';
+import { carve, maskAt, solidAt } from '../level/mask.js';
 import { glowMat, scene } from '../render/scene.js';
 import { localToWorld, SHIP_RADIUS, ships } from './ship.js';
 import { addShake, damage, shipMass } from './physics.js';
 import { WHITE } from '../fx/pools.js';
 import { terrainDebris } from '../fx/debris.js';
 import { emit } from '../fx/particles.js';
-import { DINO, DINO_S, killDino } from '../maps/forest/dino.js';
-import { killWorm, WORM, WORM_R } from '../maps/desert/worm.js';
-import { hitBreakable } from '../maps/floors.js';
-import { killEnemy, segDist, SH } from '../maps/starship/starship.js';
-import { RB } from '../maps/hangar/hangar.js';
-import { hurtRobot } from '../maps/hangar/robot.js';
+import { segDist } from '../util/math.js';
 import { sfx } from '../audio/sfx.js';
 import { animateWeaponBox, updateWeaponButtons } from '../ui/weaponBox.js';
+import { activeMap } from '../maps/index.js';
 
 /* ------------------------------------------------------------------ *
  * The Big laser: weapon 4. One shot per match, and dying does not give it back.
@@ -72,9 +68,10 @@ export function stepBigLaser(s, h) {
     d += 5;
   }
   b.len = d;
-  if (level.theme === 'floors') hitBreakable(b.ox + dx * (d + 3), b.oy + dy * (d + 3));
+  const map = activeMap();
+  map.breakAt?.(b.ox + dx * (d + 3), b.oy + dy * (d + 3));
   b.carveT -= h;
-  if (b.carveT <= 0 && P.destructible && level.theme !== 'floors') {
+  if (b.carveT <= 0 && P.destructible && !map.breakAt) {
     b.carveT = 0.06;
     for (let t = 8; t < d; t += 14) {
       const x = b.ox + dx * t, y = b.oy + dy * t;
@@ -82,10 +79,9 @@ export function stepBigLaser(s, h) {
     }
   }
   const half = BIG.width / 2;
-  if (level.theme === 'desert' && WORM.state === 'fly' && segDist(WORM.hx, WORM.hy, b.ox, b.oy, b.ang, d) < half + WORM_R) killWorm();
-  if (level.theme === 'forest' && DINO.active && segDist(DINO.x, DINO.y + 36 * DINO_S, b.ox, b.oy, b.ang, d) < half + 40 * DINO_S) killDino();
+  map.beamHit?.(b, s, d, half, BIG.enemyDamage);
   for (const o of ships) {
-    if (o === s || !o.active || !o.alive || b.hit.has(o) || level.theme === 'floors' || level.theme === 'ship') continue;
+    if (o === s || !o.active || !o.alive || b.hit.has(o) || map.coop) continue;
     if (segDist(o.x, o.y, b.ox, b.oy, b.ang, d) < half + SHIP_RADIUS * P.shipSize * 0.8) {
       b.hit.add(o);
       damage(o, BIG.damage);
@@ -93,21 +89,6 @@ export function stepBigLaser(s, h) {
       o.vx += dx * 320 / m; o.vy += dy * 320 / m;
       o.landed = false;
       for (let j = 0; j < 20; j++) emit(o.x, o.y, (Math.random() - 0.5) * 260, (Math.random() - 0.5) * 260, 0.4, j % 2 ? s.color : WHITE, 0.2, 4);
-    }
-  }
-  if (level.theme === 'ship') {
-    for (const e of SH.enemies) {
-      if (e.dead || b.hit.has(e)) continue;
-      if (segDist(e.x, e.y, b.ox, b.oy, b.ang, d) < half + e.K.r) {
-        b.hit.add(e);
-        e.hp -= BIG.enemyDamage;
-        e.flash = 0.15;
-        if (e.hp <= 0) killEnemy(e, s);
-      }
-    }
-    if (SH.spec && SH.spec.mode === 'robot' && RB.on && !RB.dead && !b.hit.has(RB) && segDist(RB.x, RB.y + 300, b.ox, b.oy, b.ang, d) < half + 120) {
-      b.hit.add(RB);
-      hurtRobot(BIG.enemyDamage, s);
     }
   }
   const ex = b.ox + dx * d, ey = b.oy + dy * d;
