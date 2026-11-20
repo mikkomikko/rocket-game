@@ -1,5 +1,5 @@
-import { BALL_BOUNCE, BALL_GRAV, BALL_IDX, BALL_R, DEG, isPractice, P, PR, WEAPONS } from '../config.js';
-import { H, solidAt, W } from '../level/mask.js';
+import { BALL_BOUNCE, BALL_GRAV, BALL_IDX, BALL_R, DEG, isPractice, P, PR, WEAPONS } from '@rocket-duel/shared/config.js';
+import { H, solidAt, W } from '@rocket-duel/shared/level/mask.js';
 import { localToWorld, SHIP_RADIUS } from './ship.js';
 import { addShake, normalAt, shipMass } from './physics.js';
 import { BALL_COL, EMBER, FIRE, ICE_COL, WHITE } from '../fx/pools.js';

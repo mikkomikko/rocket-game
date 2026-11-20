@@ -1,6 +1,6 @@
-import { BALL_MASS, DEG, isPractice, P, PR, WEAPONS } from '../config.js';
-import { approach, wrapAngle } from '../util/math.js';
-import { carve, H, level, maskAt, solidAt } from '../level/mask.js';
+import { BALL_MASS, DEG, isPractice, P, PR, WEAPONS } from '@rocket-duel/shared/config.js';
+import { approach, wrapAngle } from '@rocket-duel/shared/math.js';
+import { carve, H, level, maskAt, solidAt } from '@rocket-duel/shared/level/mask.js';
 import { hullSolid, hullWorld, localToWorld, ships } from './ship.js';
 import { fire, shipR, stepBall } from './weapons.js';
 import { EMBER, FIRE, ICE_COL, WHITE } from '../fx/pools.js';

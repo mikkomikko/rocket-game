@@ -1,8 +1,9 @@
 import { Pane } from 'tweakpane';
-import { DEFAULTS, P, PR, PRESETS, STORAGE_KEY } from '../config.js';
+import { STORAGE_KEY } from '../config.js';
+import { DEFAULTS, P, PR, PRESETS } from '@rocket-duel/shared/config.js';
 import { mon } from '../state.js';
-import { level } from '../level/mask.js';
-import { MAPS } from '../level/terrain.js';
+import { level } from '@rocket-duel/shared/level/mask.js';
+import { MAPS } from '@rocket-duel/shared/level/terrain.js';
 import { ships } from '../ships/ship.js';
 import { applyLayout, rebuildCave, restartMatch } from '../game/modes.js';
 

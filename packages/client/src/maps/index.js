@@ -1,5 +1,6 @@
-import { clamp } from '../util/math.js';
-import { H, level, levelHooks, rowColor } from '../level/mask.js';
+import { clamp } from '@rocket-duel/shared/math.js';
+import { H, level, onLevel } from '@rocket-duel/shared/level/mask.js';
+import { rowColor } from '../render/field.js';
 import { levelMat, skyMat } from '../render/scene.js';
 import { resetBoxes } from '../systems/boxes.js';
 import { forest } from './forest/index.js';
@@ -45,7 +46,7 @@ export const activeMap = () => table()[level.theme] || rock;
 export const allMaps = () => Object.values(table());
 
 export function groundRGB(y) { return activeMap().ground || rowColor[clamp(Math.floor(H - y), 0, H - 1)]; }
-levelHooks.carved = (x, y, r) => activeMap().carved?.(x, y, r);
+onLevel('carved', (x, y, r) => activeMap().carved?.(x, y, r));
 
 // Switches each map's visuals and systems on or off when the level changes.
 export function applyTheme() {

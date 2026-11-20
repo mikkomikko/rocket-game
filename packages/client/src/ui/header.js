@@ -1,4 +1,4 @@
-import { game } from '../state.js';
+import { game } from '@rocket-duel/shared/state.js';
 import { stage } from '../render/scene.js';
 import { WAVES } from '../maps/starship/constants.js';
 import { chooseLevel, restartStarship } from '../maps/starship/starship.js';

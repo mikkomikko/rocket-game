@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { isPractice, isSolo, P, P1HEX, P2HEX } from '../config.js';
-import { game } from '../state.js';
-import { approach, clamp } from '../util/math.js';
-import { H, level, W } from '../level/mask.js';
+import { P1HEX, P2HEX } from '../config.js';
+import { isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { approach, clamp } from '@rocket-duel/shared/math.js';
+import { H, level, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, renderer, scene, skyMesh, stage } from './scene.js';
 import { shapeGeo, ships } from '../ships/ship.js';
 import { ENEMY_RED } from '../maps/starship/constants.js';

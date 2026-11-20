@@ -1,9 +1,6 @@
 import { P } from '../config.js';
-import { clamp, fbm, mulberry32, vnoise } from '../util/math.js';
+import { clamp, fbm, mulberry32, vnoise } from '../math.js';
 import { carveDiskMask, farFrom, fillBlob, fillGround, H, level, mirrorLeft, W } from './mask.js';
-import { FL } from '../maps/floors/floors.js';
-import { SH } from '../maps/starship/starship.js';
-import { terrainHangar } from '../maps/hangar/hangar.js';
 
 // Open sky: rolling ground, a low ceiling and floating rock islands.
 function terrainOpen(m, rng, seed, A) {
@@ -214,7 +211,7 @@ function terrainFloors(m, rng, seed) {
       }
     });
   });
-  FL.spec = spec;
+  level.spec = spec;
   level.spawns = halls.map(([x0, x1]) => ({ x: (x0 + x1) / 2, y: 26 }));
 }
 
@@ -239,11 +236,47 @@ function terrainStarship(m) {
   for (const r of [...boxes, ...catwalks]) fill(r[0], r[1], r[2], r[3], 2);
   fill(866, H - 84, 934, H - HT, 2);   // the raygun's mount: it can't be broken
   for (const x of [150, 270]) fill(x - 38, 56, x + 38, 66, 3);
-  SH.spec = {
+  level.spec = {
     boxes, catwalks, door: [WX0, 340, WX1, 470], hullX: WX0, exitX: 1660,
     spawnPts: [[1300, 950], [700, 950], [1450, 600], [1000, 540], [1300, 330], [620, 380], [1000, 900]], bossSpawn: [900, 820],
     ammo: [[330, 578], [1060, 718], [660, 56], [1300, 56], [830, 146], [1290, 470]],
     medkits: [[505, 236], [1150, 266], [1318, 718]],
+  };
+  level.spawns = [{ x: 150, y: 66 }, { x: 270, y: 66 }];
+}
+
+// Robot hangar: parked starships on stilts, two catwalks and the landing pads at the left.
+export const HANGAR_SHIPS = [
+  { hull: [[480, 92], [840, 92], [905, 120], [860, 160], [720, 192], [540, 192], [480, 160]], fin: [[480, 160], [545, 192], [520, 250], [486, 246]],
+    posts: [[540, 56, 554, 92], [780, 56, 794, 92]], col: '#d8dbe6', under: '#9aa0b4', stripe: '#3d7bff', win: [[812, 138], [782, 148], [752, 155], [722, 160]], nozzle: [474, 124, 30] },
+  { hull: [[960, 762], [1260, 762], [1325, 792], [1260, 822], [960, 822], [928, 792]], fin: null,
+    posts: [[1050, 822, 1064, 1044], [1170, 822, 1184, 1044]], col: '#e8a23a', under: '#b0712a', stripe: '#3a3f55', win: [[1275, 796], [1245, 798]], nozzle: [934, 792, 26] },
+  { hull: [[290, 578], [470, 578], [508, 598], [470, 614], [330, 622], [290, 606]], fin: [[290, 606], [330, 622], [312, 652], [292, 648]],
+    posts: [], col: '#ff6a5a', under: '#b8403a', stripe: '#ffffff', win: [[470, 600]], nozzle: [286, 594, 18] },
+];
+export function terrainHangar(m) {
+  const fill = (x0, y0, x1, y1, v) => {
+    for (let y = Math.max(0, Math.floor(y0)); y < Math.min(H, Math.ceil(y1)); y++) {
+      const row = (H - 1 - y) * W;
+      for (let x = Math.max(0, Math.floor(x0)); x < Math.min(W, Math.ceil(x1)); x++) m[row + x] = v;
+    }
+  };
+  const HT = 56;
+  fill(0, 0, W, HT, 2);           // deck
+  fill(0, H - HT, W, H, 2);       // roof
+  fill(0, 0, 40, H, 2); fill(W - 40, 0, W, H, 2);
+  const catwalks = [[250, 560, 540, 578], [1380, 780, 1740, 798]];
+  for (const c of catwalks) fill(...c, 2);
+  for (const sh of HANGAR_SHIPS) {
+    fillPolyMask(m, sh.hull, 2);
+    if (sh.fin) fillPolyMask(m, sh.fin, 2);
+    for (const p of sh.posts) fill(...p, 2);
+  }
+  for (const x of [150, 270]) fill(x - 38, 56, x + 38, 66, 3);
+  level.spec = {
+    mode: 'robot', boxes: [], catwalks, spawnPts: [[1400, 600]], bossSpawn: [1400, 600],
+    ammo: [[400, 622], [650, 192], [1117, 822], [1540, 798]],
+    medkits: [[524, 578], [1700, 798]],
   };
   level.spawns = [{ x: 150, y: 66 }, { x: 270, y: 66 }];
 }

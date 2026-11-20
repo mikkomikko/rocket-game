@@ -1,15 +1,14 @@
 import { isPractice, P } from '../config.js';
-import { mulberry32 } from '../util/math.js';
-import { carveDiskMask, H, level, paintRegion, resizeWorld, W } from './mask.js';
+import { mulberry32 } from '../math.js';
+import { carveDiskMask, H, level, repaint, resizeWorld, W } from './mask.js';
 import { MAPS } from './terrain.js';
-import { applyTheme } from '../maps/index.js';
-import { updateMapButton } from '../ui/mapPicker.js';
 
 // Level building: runs the chosen map's terrain generator, or an empty arena for practice.
 export function generateLevel(paint = true) {
   const seed = P.seed | 0;
   const rng = mulberry32(seed * 7919 + 13);
   const def = MAPS[P.map] || MAPS.cave;
+  level.spec = null;
   resizeWorld(...(def.size || [1800, 1100]));
   const m = level.mask;
   const A = { x: W * 0.14, y: H * 0.42 }, B = { x: W * 0.86, y: H * 0.42 };
@@ -39,7 +38,7 @@ export function generateLevel(paint = true) {
   }
   if (!def.custom) level.spawns = pads;
   level.builtMap = P.map;
-  if (paint) paintRegion(0, 0, W - 1, H - 1);
+  if (paint) repaint(0, 0, W - 1, H - 1);
 }
 
 // Practice arena: nothing but the indestructible frame.
@@ -53,11 +52,11 @@ function generateEmptyLevel() {
     }
   }
   level.spawns = [{ x: W / 2, y: T }, { x: W / 2, y: T }];
-  paintRegion(0, 0, W - 1, H - 1);
+  level.spec = null;
+  repaint(0, 0, W - 1, H - 1);
 }
-export function buildLevel() {
+// Builds the current map (or the practice arena) and sets the level's theme.
+export function generateMap() {
   if (isPractice()) generateEmptyLevel(); else generateLevel();
   level.theme = (!isPractice() && MAPS[level.builtMap] && MAPS[level.builtMap].theme) || 'rock';
-  applyTheme();
-  updateMapButton();
 }

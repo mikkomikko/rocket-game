@@ -2,5 +2,13 @@
   "name": "@rocket-duel/shared",
   "private": true,
   "type": "module",
-  "main": "src/index.js"
+  "exports": {
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "test": "vitest run --environment node"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.1"
+  }
 }

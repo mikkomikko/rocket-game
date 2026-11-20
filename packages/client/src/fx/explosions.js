@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { isPractice, P, PR, WEAPONS } from '../config.js';
-import { clamp } from '../util/math.js';
-import { carve } from '../level/mask.js';
+import { isPractice, P, PR, WEAPONS } from '@rocket-duel/shared/config.js';
+import { clamp } from '@rocket-duel/shared/math.js';
+import { carve } from '@rocket-duel/shared/level/mask.js';
 import { ships } from '../ships/ship.js';
 import { addShake, damage, shipMass } from '../ships/physics.js';
 import { DUST, EMBER, FIRE, ICE_COL, WHITE } from './pools.js';

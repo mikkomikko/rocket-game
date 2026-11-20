@@ -1,5 +1,6 @@
-import { isSolo, P, reducedMotion, WEAPONS } from '../config.js';
-import { clamp } from '../util/math.js';
+import { reducedMotion } from '../config.js';
+import { isSolo, P, WEAPONS } from '@rocket-duel/shared/config.js';
+import { clamp } from '@rocket-duel/shared/math.js';
 import { ships } from '../ships/ship.js';
 import { cycleWeapon } from '../ships/weapons.js';
 import { bigFree } from '../ships/bigLaser.js';

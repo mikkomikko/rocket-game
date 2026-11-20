@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { BALL_IDX, WEAPONS } from '../config.js';
-import { game } from '../state.js';
+import { BALL_IDX, WEAPONS } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
 import { scene } from '../render/scene.js';
 import { ships } from '../ships/ship.js';
 import { B, BALL_COL, HEAVY_COL, ICE_COL, MAXB } from './pools.js';

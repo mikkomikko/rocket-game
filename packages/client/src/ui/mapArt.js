@@ -1,4 +1,4 @@
-import { mulberry32 } from '../util/math.js';
+import { mulberry32 } from '@rocket-duel/shared/math.js';
 
 /* Map pictures for the All maps picker: one small SVG drawing per map, in a 180 × 110 box. */
 const svgPts = (pts, dx = 0, dy = 0, ang = 0) => {

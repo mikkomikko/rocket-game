@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { clamp } from '../util/math.js';
-import { maskAt, solidAt } from '../level/mask.js';
+import { clamp } from '@rocket-duel/shared/math.js';
+import { maskAt, solidAt } from '@rocket-duel/shared/level/mask.js';
 import { scene } from '../render/scene.js';
 import { EMBER, pointScale, WHITE } from './pools.js';
 import { emit } from './particles.js';

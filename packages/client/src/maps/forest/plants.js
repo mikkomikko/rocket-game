@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { P } from '../../config.js';
-import { clamp, mulberry32 } from '../../util/math.js';
-import { H, level, solidAt, W } from '../../level/mask.js';
+import { P } from '@rocket-duel/shared/config.js';
+import { clamp, mulberry32 } from '@rocket-duel/shared/math.js';
+import { H, level, solidAt, W } from '@rocket-duel/shared/level/mask.js';
 import { scene } from '../../render/scene.js';
 import { emit } from '../../fx/particles.js';
 

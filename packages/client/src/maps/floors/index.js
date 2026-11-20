@@ -1,6 +1,7 @@
-import { clamp } from '../../util/math.js';
+import { clamp } from '@rocket-duel/shared/math.js';
 import { ships } from '../../ships/ship.js';
 import { buildFloors, bulletHitsRock, clearFloors, drawFloors, FL, hitBreakable, resetLava, stepFloors } from './floors.js';
+import { level } from '@rocket-duel/shared/level/mask.js';
 
 const floorOf = (s) => clamp(Math.floor((s.y - 300) / 400) + 2, 1, 10);
 
@@ -10,7 +11,7 @@ export const floors = {
   material: 'metal',
   coop: true,
   sealedHalls: true,   // the orange blocks seal each hallway until they are shot
-  enter() { buildFloors(); resetLava(0); resetLava(1); },
+  enter() { FL.spec = level.spec; buildFloors(); resetLava(0); resetLava(1); },
   leave() { clearFloors(); },
   step(h) { stepFloors(h); },
   draw(now) { drawFloors(now); },

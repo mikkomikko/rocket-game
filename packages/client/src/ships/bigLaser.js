@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { isPractice, P, PR, WEAPONS } from '../config.js';
-import { carve, maskAt, solidAt } from '../level/mask.js';
+import { isPractice, P, PR, WEAPONS } from '@rocket-duel/shared/config.js';
+import { carve, maskAt, solidAt } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, scene } from '../render/scene.js';
 import { localToWorld, SHIP_RADIUS, ships } from './ship.js';
 import { addShake, damage, shipMass } from './physics.js';
 import { WHITE } from '../fx/pools.js';
 import { terrainDebris } from '../fx/debris.js';
 import { emit } from '../fx/particles.js';
-import { segDist } from '../util/math.js';
+import { segDist } from '@rocket-duel/shared/math.js';
 import { sfx } from '../audio/sfx.js';
 import { animateWeaponBox, updateWeaponButtons } from '../ui/weaponBox.js';
 import { activeMap } from '../maps/index.js';

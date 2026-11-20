@@ -1,7 +1,7 @@
-import { isPractice, isSolo, P } from '../config.js';
-import { game } from '../state.js';
-import { level } from '../level/mask.js';
-import { MAPS } from '../level/terrain.js';
+import { isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { level } from '@rocket-duel/shared/level/mask.js';
+import { MAPS } from '@rocket-duel/shared/level/terrain.js';
 import { keysDown } from '../input.js';
 import { setMode } from '../game/modes.js';
 import { togglePause } from './header.js';

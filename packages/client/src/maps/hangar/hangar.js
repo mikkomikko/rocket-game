@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { mulberry32 } from '../../util/math.js';
-import { H, level, W } from '../../level/mask.js';
-import { fillPolyMask } from '../../level/terrain.js';
+import { mulberry32 } from '@rocket-duel/shared/math.js';
+import { H, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat } from '../../render/scene.js';
 import { shapeGeo } from '../../ships/ship.js';
 import { canvasTex, girderMat, stripedPlane } from '../floors/floors.js';
@@ -9,19 +8,12 @@ import { backWallMat, resetStarship, SH, SHIP_GROUP } from '../starship/starship
 import { buildAmmo, buildMedkits } from '../starship/supplies.js';
 import { makeRobotMesh } from './robotMesh.js';
 import { resetRobot } from './robot.js';
+import { HANGAR_SHIPS } from '@rocket-duel/shared/level/terrain.js';
 
 /* ------------------------------------------------------------------ *
  * Robot hangar: parked starships, and a giant robot that drops in from the roof.
  * It shoots a laser from its eye, punches with stretchy piston arms and sends out small robots.
  * ------------------------------------------------------------------ */
-const HANGAR_SHIPS = [
-  { hull: [[480, 92], [840, 92], [905, 120], [860, 160], [720, 192], [540, 192], [480, 160]], fin: [[480, 160], [545, 192], [520, 250], [486, 246]],
-    posts: [[540, 56, 554, 92], [780, 56, 794, 92]], col: '#d8dbe6', under: '#9aa0b4', stripe: '#3d7bff', win: [[812, 138], [782, 148], [752, 155], [722, 160]], nozzle: [474, 124, 30] },
-  { hull: [[960, 762], [1260, 762], [1325, 792], [1260, 822], [960, 822], [928, 792]], fin: null,
-    posts: [[1050, 822, 1064, 1044], [1170, 822, 1184, 1044]], col: '#e8a23a', under: '#b0712a', stripe: '#3a3f55', win: [[1275, 796], [1245, 798]], nozzle: [934, 792, 26] },
-  { hull: [[290, 578], [470, 578], [508, 598], [470, 614], [330, 622], [290, 606]], fin: [[290, 606], [330, 622], [312, 652], [292, 648]],
-    posts: [], col: '#ff6a5a', under: '#b8403a', stripe: '#ffffff', win: [[470, 600]], nozzle: [286, 594, 18] },
-];
 export const ROBOT_MAXHP = 1400, ROBOT_REACH = 480, ROBOT_XMIN = 1150, ROBOT_HIP = 200;
 export const RB = { on: false, state: 'off', x: 1450, y: 56, vy: 0, dir: -1, hp: ROBOT_MAXHP, flash: 0, phase: 0, bob: 0, laserCd: 3, punchCd: 2, spawnCd: 6, spawning: 0, hatch: 0, roof: 0, t: 0, laser: null, dead: false, beamW: 34, mesh: null, roofMesh: null,
   arms: [{ side: -1, fx: 0, fy: 0, mode: 'rest', t: 0, ux: 0, uy: -1, hit: false }, { side: 1, fx: 0, fy: 0, mode: 'rest', t: 0, ux: 0, uy: -1, hit: false }] };
@@ -39,32 +31,6 @@ const ROBOT_STAGES = [0.8, 0.6, 0.45, 0.3, 0.15];
 export const robotStage = () => ROBOT_STAGES.filter((f) => RB.hp < ROBOT_MAXHP * f).length;
 export const robotAngry = () => RB.hp < ROBOT_MAXHP * 0.5;
 
-export function terrainHangar(m) {
-  const fill = (x0, y0, x1, y1, v) => {
-    for (let y = Math.max(0, Math.floor(y0)); y < Math.min(H, Math.ceil(y1)); y++) {
-      const row = (H - 1 - y) * W;
-      for (let x = Math.max(0, Math.floor(x0)); x < Math.min(W, Math.ceil(x1)); x++) m[row + x] = v;
-    }
-  };
-  const HT = 56;
-  fill(0, 0, W, HT, 2);           // deck
-  fill(0, H - HT, W, H, 2);       // roof
-  fill(0, 0, 40, H, 2); fill(W - 40, 0, W, H, 2);
-  const catwalks = [[250, 560, 540, 578], [1380, 780, 1740, 798]];
-  for (const c of catwalks) fill(...c, 2);
-  for (const sh of HANGAR_SHIPS) {
-    fillPolyMask(m, sh.hull, 2);
-    if (sh.fin) fillPolyMask(m, sh.fin, 2);
-    for (const p of sh.posts) fill(...p, 2);
-  }
-  for (const x of [150, 270]) fill(x - 38, 56, x + 38, 66, 3);
-  SH.spec = {
-    mode: 'robot', boxes: [], catwalks, spawnPts: [[1400, 600]], bossSpawn: [1400, 600],
-    ammo: [[400, 622], [650, 192], [1117, 822], [1540, 798]],
-    medkits: [[524, 578], [1700, 798]],
-  };
-  level.spawns = [{ x: 150, y: 66 }, { x: 270, y: 66 }];
-}
 
 const signTex = canvasTex(256, 64, (g) => {
   g.fillStyle = '#1a1d2e'; g.fillRect(0, 0, 256, 64);

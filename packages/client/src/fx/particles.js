@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { P } from '../config.js';
-import { solidAt } from '../level/mask.js';
+import { P } from '@rocket-duel/shared/config.js';
+import { solidAt } from '@rocket-duel/shared/level/mask.js';
 import { scene } from '../render/scene.js';
 import { pointGeo, pointMaterial } from './pools.js';
 

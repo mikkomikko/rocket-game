@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { P } from '../../config.js';
-import { clamp, segDist, wrapAngle } from '../../util/math.js';
-import { H, level, paintRegion, solidAt, W } from '../../level/mask.js';
+import { P } from '@rocket-duel/shared/config.js';
+import { clamp, segDist, wrapAngle } from '@rocket-duel/shared/math.js';
+import { H, level, repaint, solidAt, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, LAVA_VS, scene } from '../../render/scene.js';
 import { shapeGeo, SHIP_RADIUS, ships } from '../../ships/ship.js';
 import { addShake, damage } from '../../ships/physics.js';
@@ -286,7 +286,7 @@ function setDoor(open) {
   SH.doorOpen = open;
   const [x0, y0, x1, y1] = SH.spec.door, m = level.mask;
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) m[(H - 1 - y) * W + x] = open ? 0 : 2;
-  paintRegion(x0 - 3, H - y1 - 3, x1 + 3, H - y0 + 3);
+  repaint(x0 - 3, H - y1 - 3, x1 + 3, H - y0 + 3);
 }
 function startWave(i) {
   SH.wave = i;

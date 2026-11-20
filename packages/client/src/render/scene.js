@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { P1HEX, P2HEX } from '../config.js';
-import { hexRGB } from '../util/math.js';
-import { H, level, levelHooks, W } from '../level/mask.js';
+import { hexRGB } from '@rocket-duel/shared/math.js';
+import { H, onLevel, W } from '@rocket-duel/shared/level/mask.js';
+import { field } from './field.js';
 
 /* ------------------------------------------------------------------ *
  * Three.js scene
@@ -132,14 +133,14 @@ skyMesh.frustumCulled = false;
 scene.add(skyMesh);
 
 // Terrain: smooth walls from the softened field, with soft lighting, depth shading, cast shadows and glowing pads.
-level.tex = new THREE.DataTexture(level.field, W, H, THREE.RGFormat, THREE.UnsignedByteType);
-level.tex.magFilter = THREE.LinearFilter;
-level.tex.minFilter = THREE.LinearMipmapLinearFilter;
-level.tex.generateMipmaps = true;
-level.tex.unpackAlignment = 1;
+field.tex = new THREE.DataTexture(field.data, W, H, THREE.RGFormat, THREE.UnsignedByteType);
+field.tex.magFilter = THREE.LinearFilter;
+field.tex.minFilter = THREE.LinearMipmapLinearFilter;
+field.tex.generateMipmaps = true;
+field.tex.unpackAlignment = 1;
 export const levelMat = new THREE.ShaderMaterial({
   uniforms: {
-    uField: { value: level.tex },
+    uField: { value: field.tex },
     uSize: { value: new THREE.Vector2(W, H) },
     uP1: { value: srgb3(P1HEX) },
     uP2: { value: srgb3(P2HEX) },
@@ -254,13 +255,13 @@ scene.add(gridMesh);
 
 // When a map changes the world size, rebuild everything that was sized to it.
 function worldResized() {
-  level.tex.dispose();
-  level.tex = new THREE.DataTexture(level.field, W, H, THREE.RGFormat, THREE.UnsignedByteType);
-  level.tex.magFilter = THREE.LinearFilter;
-  level.tex.minFilter = THREE.LinearMipmapLinearFilter;
-  level.tex.generateMipmaps = true;
-  level.tex.unpackAlignment = 1;
-  levelMat.uniforms.uField.value = level.tex;
+  field.tex.dispose();
+  field.tex = new THREE.DataTexture(field.data, W, H, THREE.RGFormat, THREE.UnsignedByteType);
+  field.tex.magFilter = THREE.LinearFilter;
+  field.tex.minFilter = THREE.LinearMipmapLinearFilter;
+  field.tex.generateMipmaps = true;
+  field.tex.unpackAlignment = 1;
+  levelMat.uniforms.uField.value = field.tex;
   levelMat.uniforms.uSize.value.set(W, H);
   skyMat.uniforms.uHalf.value.set(W, H);
   for (const [mesh, sx, sy] of [[levelMesh, 1, 1], [skyMesh, 2, 2], [gridMesh, 1, 1]]) {
@@ -269,7 +270,7 @@ function worldResized() {
     mesh.position.x = W / 2; mesh.position.y = H / 2;
   }
 }
-levelHooks.resized = worldResized;
+onLevel('resized', worldResized);
 
 // A soft round glow, reused for ship auras and engine flames.
 const glowTex = (() => {

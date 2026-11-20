@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { P, WEAPONS } from '../config.js';
-import { game } from '../state.js';
-import { solidAt } from '../level/mask.js';
+import { P, WEAPONS } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { solidAt } from '@rocket-duel/shared/level/mask.js';
 import { hullWorld, TRAJ_MAX } from '../ships/ship.js';
 import { shipMass } from '../ships/physics.js';
 import { B, bulletGeo, MAXB } from '../fx/pools.js';

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { BALL_COLOR, BALL_R, FREEZE_COLOR, P, P1HEX, P2HEX } from '../config.js';
-import { H, solidAt, W } from '../level/mask.js';
+import { P1HEX, P2HEX } from '../config.js';
+import { BALL_COLOR, BALL_R, FREEZE_COLOR, P } from '@rocket-duel/shared/config.js';
+import { H, solidAt, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, scene } from '../render/scene.js';
 
 /* ------------------------------------------------------------------ *

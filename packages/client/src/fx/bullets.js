@@ -1,6 +1,6 @@
-import { BALL_IDX, BALL_R, P, WEAPONS } from '../config.js';
-import { game } from '../state.js';
-import { solidAt } from '../level/mask.js';
+import { BALL_IDX, BALL_R, P, WEAPONS } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { solidAt } from '@rocket-duel/shared/level/mask.js';
 import { SHIP_RADIUS, ships } from '../ships/ship.js';
 import { damage, shipMass } from '../ships/physics.js';
 import { ballPop, ballShip } from '../ships/weapons.js';

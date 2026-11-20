@@ -1,7 +1,8 @@
-import { BALL_IDX, isPractice, P, PR, reducedMotion, WEAPONS } from './config.js';
-import { game, mon } from './state.js';
-import { clamp } from './util/math.js';
-import { level } from './level/mask.js';
+import { reducedMotion } from './config.js';
+import { BALL_IDX, isPractice, P, PR, WEAPONS } from '@rocket-duel/shared/config.js';
+import { mon } from './state.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { clamp } from '@rocket-duel/shared/math.js';
 import { gridMesh, renderer, scene, skyMat } from './render/scene.js';
 import { ships } from './ships/ship.js';
 import { shipMass, shipVsShip, updateShip } from './ships/physics.js';
@@ -19,6 +20,7 @@ import { updateHud } from './ui/hud.js';
 import { sfx } from './audio/sfx.js';
 import { updateWeaponBoxes } from './ui/weaponBox.js';
 import { activeMap, allMaps } from './maps/index.js';
+import { field } from './render/field.js';
 
 // The fixed-step simulation (step) and the render loop (frame).
 function step(h) {
@@ -57,7 +59,7 @@ function frame(now) {
   }
   const alpha = clamp(acc / h, 0, 1);
 
-  if (level.dirty) { level.tex.needsUpdate = true; level.dirty = false; }
+  if (field.dirty) { field.tex.needsUpdate = true; field.dirty = false; }
   for (const s of ships) {
     if (!s.alive) { s.group.visible = false; s.flame.visible = false; drawDebug(s, alpha); continue; }
     s.group.visible = true;

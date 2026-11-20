@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BALL_COLOR, FREEZE_COLOR, WEAPONS } from '../config.js';
+import { BALL_COLOR, FREEZE_COLOR, WEAPONS } from '@rocket-duel/shared/config.js';
 import { scene } from '../render/scene.js';
 
 /* ------------------------------------------------------------------ *

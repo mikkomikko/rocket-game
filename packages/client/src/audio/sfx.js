@@ -1,6 +1,6 @@
-import { P } from '../config.js';
-import { game } from '../state.js';
-import { clamp } from '../util/math.js';
+import { P } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { clamp } from '@rocket-duel/shared/math.js';
 import { ships } from '../ships/ship.js';
 import { BIG } from '../ships/bigLaser.js';
 import { startEl } from '../ui/startScreen.js';

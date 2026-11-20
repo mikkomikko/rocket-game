@@ -1,6 +1,6 @@
-import { isPractice, isSolo, P } from './config.js';
-import { game } from './state.js';
-import { clamp } from './util/math.js';
+import { isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { clamp } from '@rocket-duel/shared/math.js';
 import { ships } from './ships/ship.js';
 import { cycleWeapon } from './ships/weapons.js';
 import { restartMatch } from './game/modes.js';

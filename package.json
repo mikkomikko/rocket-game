@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "npm run dev -w @rocket-duel/client",
     "build": "npm run build -w @rocket-duel/client",
-    "preview": "npm run preview -w @rocket-duel/client"
+    "preview": "npm run preview -w @rocket-duel/client",
+    "test": "npm test -w @rocket-duel/shared"
   }
 }

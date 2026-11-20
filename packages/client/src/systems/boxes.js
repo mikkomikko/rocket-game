@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { isPractice, isSolo, P, PR } from '../config.js';
-import { game } from '../state.js';
-import { H, level, solidAt, W } from '../level/mask.js';
+import { isPractice, isSolo, P, PR } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { H, level, solidAt, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, scene } from '../render/scene.js';
 import { ships } from '../ships/ship.js';
 import { WHITE } from '../fx/pools.js';

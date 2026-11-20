@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { P } from '../../config.js';
-import { mulberry32 } from '../../util/math.js';
-import { H, level, paintRegion, W } from '../../level/mask.js';
+import { P } from '@rocket-duel/shared/config.js';
+import { mulberry32 } from '@rocket-duel/shared/math.js';
+import { H, level, repaint, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, LAVA_VS, NOISE_GLSL, scene } from '../../render/scene.js';
 import { SHIP_RADIUS, ships } from '../../ships/ship.js';
 import { addShake, damage, kill } from '../../ships/physics.js';
@@ -178,7 +178,7 @@ export function hitBreakable(x, y) {
         const row = (H - 1 - yy) * W;
         for (let xx = Math.floor(b.x0); xx < Math.ceil(b.x1); xx++) m[row + xx] = 0;
       }
-      paintRegion(b.x0 - 3, H - b.y1 - 3, b.x1 + 3, H - b.y0 + 3);
+      repaint(b.x0 - 3, H - b.y1 - 3, b.x1 + 3, H - b.y0 + 3);
       for (let i = 0; i < 24; i++) {
         const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 200;
         emit(b.x0 + Math.random() * (b.x1 - b.x0), (b.y0 + b.y1) / 2, Math.cos(a) * sp, Math.sin(a) * sp, 0.4 + Math.random() * 0.5, i % 3 ? CRATE_BITS : WHITE, 1, 3 + Math.random() * 4);

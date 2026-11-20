@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { P } from '../../config.js';
-import { approach, clamp, segDist, wrapAngle } from '../../util/math.js';
-import { H, solidAt, W } from '../../level/mask.js';
+import { P } from '@rocket-duel/shared/config.js';
+import { approach, clamp, segDist, wrapAngle } from '@rocket-duel/shared/math.js';
+import { H, solidAt, W } from '@rocket-duel/shared/level/mask.js';
 import { stage } from '../../render/scene.js';
 import { shapeGeo, SHIP_RADIUS, ships } from '../../ships/ship.js';
 import { addShake, damage, shipMass } from '../../ships/physics.js';

@@ -1,4 +1,4 @@
-import { segDist } from '../../util/math.js';
+import { segDist } from '@rocket-duel/shared/math.js';
 import { backPlants, buildPlants, clearPlants, frontPlants, plantsAfterCarve } from './plants.js';
 import { DINO, DINO_S, dinoHit, drawDino, killDino, resetDino, stepDino } from './dino.js';
 import { drawPickup, resetPickup, stepPickup } from './pickup.js';

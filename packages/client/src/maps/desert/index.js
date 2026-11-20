@@ -1,4 +1,4 @@
-import { segDist } from '../../util/math.js';
+import { segDist } from '@rocket-duel/shared/math.js';
 import { emit } from '../../fx/particles.js';
 import { backPlants, clearPlants, frontPlants, plantsAfterCarve } from '../forest/plants.js';
 import { buildDesertPlants, SAND } from './plants.js';

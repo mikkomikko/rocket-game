@@ -1,7 +1,7 @@
 import './styles/index.css';
-import { P, PR } from './config.js';
-import { game } from './state.js';
-import { level, solidAt } from './level/mask.js';
+import { P, PR } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { level, solidAt } from '@rocket-duel/shared/level/mask.js';
 import { ships } from './ships/ship.js';
 import { startLoop } from './loop.js';
 import { setMode } from './game/modes.js';

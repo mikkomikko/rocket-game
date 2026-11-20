@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { solidAt } from '../level/mask.js';
+import { solidAt } from '@rocket-duel/shared/level/mask.js';
 import { scene } from '../render/scene.js';
 import { pointScale } from './pools.js';
 

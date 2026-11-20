@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { P } from '../../config.js';
-import { mulberry32 } from '../../util/math.js';
-import { W } from '../../level/mask.js';
+import { P } from '@rocket-duel/shared/config.js';
+import { mulberry32 } from '@rocket-duel/shared/math.js';
+import { W } from '@rocket-duel/shared/level/mask.js';
 import { addBlob, addStrip, backPlants, lighter, pickOf, plants, rebuildFrontPlants, setLayer, surfaceY } from '../forest/plants.js';
 
 /* ------------------------------------------------------------------ *

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { P } from '../../config.js';
-import { H, level, W } from '../../level/mask.js';
+import { P } from '@rocket-duel/shared/config.js';
+import { H, level, W } from '@rocket-duel/shared/level/mask.js';
 import { glowMat, scene } from '../../render/scene.js';
 import { shapeGeo, ships } from '../../ships/ship.js';
 import { WHITE } from '../../fx/pools.js';

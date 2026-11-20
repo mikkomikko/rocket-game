@@ -1,9 +1,11 @@
-import { isPractice, P, SKIN } from '../config.js';
-import { game } from '../state.js';
-import { hexRGB } from '../util/math.js';
-import { H, level, rowColor, W } from '../level/mask.js';
-import { MAPS } from '../level/terrain.js';
-import { generateLevel } from '../level/generate.js';
+import { SKIN } from '../config.js';
+import { isPractice, P } from '@rocket-duel/shared/config.js';
+import { game } from '@rocket-duel/shared/state.js';
+import { hexRGB } from '@rocket-duel/shared/math.js';
+import { H, level, W } from '@rocket-duel/shared/level/mask.js';
+import { rowColor } from '../render/field.js';
+import { MAPS } from '@rocket-duel/shared/level/terrain.js';
+import { generateLevel } from '@rocket-duel/shared/level/generate.js';
 import { keysDown } from '../input.js';
 import { rebuildCave } from '../game/modes.js';
 import { MAP_ART } from './mapArt.js';
@@ -40,7 +42,7 @@ function drawThumb(canvas, k) {
   const key = thumbKey(k);
   let img = picker.thumbs.get(key);
   if (!img) {
-    const keepMask = level.mask.slice(), keepSpawns = level.spawns, keepMap = P.map, keepBuilt = level.builtMap;
+    const keepMask = level.mask.slice(), keepSpawns = level.spawns, keepMap = P.map, keepBuilt = level.builtMap, keepSpec = level.spec;
     P.map = k;
     generateLevel(false);
     const tw = canvas.width, th = canvas.height, sx = W / tw, sy = H / th;
@@ -55,7 +57,7 @@ function drawThumb(canvas, k) {
         img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
       }
     }
-    level.mask.set(keepMask); level.spawns = keepSpawns; P.map = keepMap; level.builtMap = keepBuilt;
+    level.mask.set(keepMask); level.spawns = keepSpawns; P.map = keepMap; level.builtMap = keepBuilt; level.spec = keepSpec;
     picker.thumbs.set(key, img);
   }
   canvas.getContext('2d').putImageData(img, 0, 0);

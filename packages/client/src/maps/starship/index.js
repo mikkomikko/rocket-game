@@ -1,9 +1,10 @@
-import { segDist } from '../../util/math.js';
+import { segDist } from '@rocket-duel/shared/math.js';
 import { ships } from '../../ships/ship.js';
 import { WAVES } from './constants.js';
 import { buildStarship, bulletHitsEnemy, chooseLevel, clearStarship, drawStarship, killEnemy, resetStarship, restartStarship, SH, stepStarship } from './starship.js';
 import { RB, rbLocal } from '../hangar/hangar.js';
 import { hurtRobot } from '../hangar/robot.js';
+import { level } from '@rocket-duel/shared/level/mask.js';
 
 const robotUp = () => SH.spec && SH.spec.mode === 'robot' && RB.on && !RB.dead;
 
@@ -12,7 +13,7 @@ export const ship = {
   shader: { steel: 1 },
   material: 'metal',
   coop: true,
-  enter() { buildStarship(); },
+  enter() { SH.spec = level.spec; buildStarship(); },
   leave() { clearStarship(); },
   reset() { resetStarship(); },
   step(h) { stepStarship(h); },

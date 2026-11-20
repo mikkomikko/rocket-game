@@ -1,5 +1,5 @@
 import { SKIN } from '../config.js';
-import { hexRGB } from '../util/math.js';
+import { hexRGB } from '@rocket-duel/shared/math.js';
 import { levelMat, srgb3 } from '../render/scene.js';
 import { ships } from '../ships/ship.js';
 import { pointers } from '../render/camera.js';
