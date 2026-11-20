@@ -12,6 +12,7 @@ import { fLevel, fPractice } from '../ui/tuningPanel.js';
 import { activeMap, applyTheme } from '../maps/index.js';
 import { generateMap } from '@rocket-duel/shared/level/generate.js';
 import { views } from '../ships/view.js';
+import { singleView } from '../render/camera.js';
 
 // Match flow: restart, rebuild the map, and switch between duel, solo and practice.
 export function restartMatch() {
@@ -63,7 +64,7 @@ const MODE_TEXT = {
     aria: 'Practice view. One ship in an empty arena. W or Up thrusts, A and D or Left and Right turn, left Shift or minus fires, R resets the ship.',
   },
 };
-export function applyLayout() { stage.dataset.split = isSolo() ? 'single' : P.split; }
+export function applyLayout() { stage.dataset.split = singleView() ? 'single' : P.split; }
 export function setMode(mode, force = false) {
   closePicker();
   if (mode !== 'practice' && mode !== 'solo') mode = 'duel';

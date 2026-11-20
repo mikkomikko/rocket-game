@@ -3,7 +3,7 @@ import { isSolo, P, WEAPONS } from '@rocket-duel/shared/config.js';
 import { clamp } from '@rocket-duel/shared/math.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { bigFree } from '@rocket-duel/shared/ships/bigLaser.js';
-import { cams, viewH } from '../render/camera.js';
+import { cams, viewH, viewSlot } from '../render/camera.js';
 import { views } from '../ships/view.js';
 import { switchWeapon } from '../net/online.js';
 
@@ -53,12 +53,12 @@ export function animateWeaponBox(i, from, to) {
 // Keep each box beside its ship in that player's view, and hide it a moment after the last switch.
 export function updateWeaponBoxes(rects) {
   const now = performance.now();
-  for (let i = 0; i < 2; i++) {
-    const s = ships[i], box = wbox[i], r = rects[i];
+  for (let id = 0; id < 2; id++) {
+    const slot = viewSlot(id), s = ships[id], box = wbox[id], r = rects[slot];
     const show = box.until > now && s.alive && s.active && r;
     if (!show) { if (box.el.classList.contains('on')) box.el.classList.remove('on'); continue; }
-    const cam = cams[i];
-    const g = views[i].group;
+    const cam = cams[slot];
+    const g = views[id].group;
     const sx = r.x + (g.position.x - (cam.position.x + cam.left)) / (cam.right - cam.left) * r.w;
     const sy = r.y + (g.position.y - (cam.position.y + cam.bottom)) / (cam.top - cam.bottom) * r.h;
     const off = 18 * P.shipSize * P.zoom + 10;

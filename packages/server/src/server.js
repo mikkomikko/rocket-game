@@ -14,13 +14,17 @@ import { B, clearBullets } from '@rocket-duel/shared/bullets.js';
 import { stepSim } from '@rocket-duel/shared/sim.js';
 import { encodeArgs, encodeBullets, encodeShips, SNAP_EVERY } from '@rocket-duel/shared/net.js';
 
+const MAX_QUEUE = 30;   // inputs a player may be ahead of the server (a quarter second)
+
 // Maps without a theme of their own (no creatures or enemies): the ones the server can run so far.
 export const ONLINE_MAPS = Object.keys(MAPS).filter((k) => !MAPS[k].theme);
 
 /* One duel for up to two players. The server owns the match: it runs the simulation from the players'
  * inputs and sends every browser what happened. The process holds one match, since the shared
  * simulation keeps its state in modules. */
-export function startServer({ port = 8787, map = 'cave', seed = 7 } = {}) {
+// lag (ms) delays every message each way, to try the game as if over a slow connection.
+export function startServer({ port = 8787, map = 'cave', seed = 7, lag = 0 } = {}) {
+  const later = (fn) => (lag > 0 ? setTimeout(fn, lag / 2) : fn());
   if (!ONLINE_MAPS.includes(map)) throw new Error(`Online play supports these maps: ${ONLINE_MAPS.join(', ')}`);
   Object.assign(P, structuredClone(DEFAULTS), { map, seed });
   game.mode = 'duel'; game.time = 0; game.matchClock = 0;
@@ -38,23 +42,29 @@ export function startServer({ port = 8787, map = 'cave', seed = 7 } = {}) {
     else events.push([type, ...encodeArgs(args)]);
   });
 
-  const seats = [null, null];
+  const seats = [null, null];   // { ws, queue, ack } per ship: inputs waiting to be applied, last one applied
   const wss = new WebSocketServer({ port });
   wss.on('connection', (ws) => {
     const id = seats.indexOf(null);
     if (id < 0) { ws.send(JSON.stringify({ t: 'full' })); ws.close(); return; }
-    seats[id] = ws;
+    const seat = { ws, queue: [], ack: 0 };
+    seats[id] = seat;
     const s = ships[id];
     s.input = { turn: 0, thrust: 0, fire: false };
     s.score = 0;
     respawn(s);
-    ws.send(JSON.stringify({ t: 'welcome', id, P, carves }));
-    ws.on('message', (data) => {
+    const welcome = JSON.stringify({ t: 'welcome', id, P, carves });
+    later(() => ws.send(welcome));
+    ws.on('message', (data) => later(() => {
       let m;
       try { m = JSON.parse(data); } catch { return; }
-      if (m.t === 'input') s.input = { turn: clamp(+m.turn || 0, -1, 1), thrust: clamp(+m.thrust || 0, 0, 1), fire: !!m.fire };
+      if (m.t === 'input' && Array.isArray(m.list)) {
+        m.list.forEach(([turn, thrust, fire], k) => seat.queue.push([m.seq + k, { turn: clamp(+turn || 0, -1, 1), thrust: clamp(+thrust || 0, 0, 1), fire: !!fire }]));
+        // A player far ahead (a stalled server, a fast clock) skips the oldest inputs instead of falling behind.
+        if (seat.queue.length > MAX_QUEUE) seat.ack = seat.queue.splice(0, seat.queue.length - MAX_QUEUE).at(-1)[0];
+      }
       else if (m.t === 'cycle') cycleWeapon(s);
-    });
+    }));
     ws.on('close', () => {
       seats[id] = null;
       s.active = false; s.alive = false; s.beam = null;
@@ -69,18 +79,20 @@ export function startServer({ port = 8787, map = 'cave', seed = 7 } = {}) {
     acc += Math.min(0.25, (now - last) / 1000);
     last = now;
     while (acc >= h) {
+      // Each step takes the next input from every player; with none waiting, the last one holds.
+      seats.forEach((seat, id) => { if (seat?.queue.length) { const [seq, inp] = seat.queue.shift(); ships[id].input = inp; seat.ack = seq; } });
       stepSim(h);
       acc -= h;
       if (++steps % SNAP_EVERY === 0) {
-        const msg = JSON.stringify({ t: 'snap', ships: encodeShips(), bullets: encodeBullets(), events });
+        const msg = JSON.stringify({ t: 'snap', ships: encodeShips(), bullets: encodeBullets(), events, acks: seats.map((st) => st?.ack ?? 0) });
         events = [];
-        for (const ws of seats) if (ws && ws.readyState === ws.OPEN) ws.send(msg);
+        for (const seat of seats) if (seat) later(() => { if (seat.ws.readyState === seat.ws.OPEN) seat.ws.send(msg); });
       }
     }
   }, 2);
 
   return {
     port: () => wss.address().port,
-    close: () => new Promise((resolve) => { clearInterval(timer); for (const ws of seats) ws?.terminate(); wss.close(() => resolve()); }),
+    close: () => new Promise((resolve) => { clearInterval(timer); for (const seat of seats) seat?.ws.terminate(); wss.close(() => resolve()); }),
   };
 }

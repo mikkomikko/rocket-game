@@ -24,8 +24,15 @@ function join() {
     setTimeout(() => reject(new Error('timed out waiting for a message')), ms);
   });
   const send = (m) => ws.send(JSON.stringify(m));
+  // Inputs go one per simulation step, numbered, as the browser sends them.
+  let seq = 0;
+  const input = (turn, thrust, fire, steps = 1) => {
+    send({ t: 'input', seq: seq + 1, list: Array.from({ length: steps }, () => [turn, thrust, fire ? 1 : 0]) });
+    seq += steps;
+    return seq;
+  };
   const opened = new Promise((r) => ws.on('open', r));
-  return { ws, msgs, next, send, opened };
+  return { ws, msgs, next, send, input, opened };
 }
 const lastSnap = (p) => p.msgs.filter((m) => m.t === 'snap').at(-1);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -53,18 +60,24 @@ describe('the online duel server', () => {
 
   it('flies a ship from its player\'s input', async () => {
     const y0 = lastSnap(a).ships[0][0][1];
-    a.send({ t: 'input', turn: 0, thrust: 1, fire: false });
+    a.input(0, 1, false);
     await wait(600);
-    a.send({ t: 'input', turn: 0, thrust: 0, fire: false });
+    a.input(0, 0, false);
     const [vals] = lastSnap(b).ships[0];   // the other player sees it too
     expect(vals[1]).toBeGreaterThan(y0 + 20);
   });
 
+  it('applies numbered inputs in order and acknowledges them', async () => {
+    const last = a.input(0.5, 0, false, 30);   // a quarter second of steps at once
+    await a.next((m) => m.t === 'snap' && m.acks[0] === last);
+    a.input(0, 0, false);
+  });
+
   it('passes on shots, craters and weapon switches as events', async () => {
     b.send({ t: 'cycle' });
-    b.send({ t: 'input', turn: 0, thrust: 0.6, fire: true });
+    b.input(0, 0.6, true);
     await wait(1500);
-    b.send({ t: 'input', turn: 0, thrust: 0, fire: false });
+    b.input(0, 0, false);
     await wait(300);
     const events = a.msgs.filter((m) => m.t === 'snap').flatMap((m) => m.events);
     const types = new Set(events.map((e) => e[0]));

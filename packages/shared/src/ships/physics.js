@@ -1,5 +1,6 @@
 import { BALL_MASS, DEG, isPractice, P, PR, WEAPONS } from '../config.js';
 import { approach, wrapAngle } from '../math.js';
+import { game } from '../state.js';
 import { carve, H, level, maskAt, solidAt } from '../level/mask.js';
 import { simEvent } from '../events.js';
 import { mapRules } from '../maps.js';
@@ -41,7 +42,7 @@ function supported(s) {
 export function addShake(s, amount) { simEvent('shake', s, amount); }
 
 export function damage(s, amount) {
-  if (!s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage) || mapRules().shipsSafe?.()) return;
+  if (game.predicting || !s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage) || mapRules().shipsSafe?.()) return;
   s.hp -= amount;
   addShake(s, Math.min(1, amount / 30));
   if (s.hp <= 0) { s.hp = 0; kill(s); }
@@ -114,14 +115,16 @@ function resolveTerrain(s) {
   if (impact > 40) simEvent('crash', s, cx, cy, n, impact);
 }
 
-export function updateShip(s, h) {
-  if (!s.alive) { s.respawnT -= h; if (s.respawnT <= 0) respawn(s); return; }
+// Moves a ship one step from its input: turning, thrust, gravity and terrain. A browser also runs this to
+// predict its own ship. Returns true when the ship can act this step (fire).
+export function moveShip(s, h) {
+  if (!s.alive) { s.respawnT -= h; if (s.respawnT <= 0) respawn(s); return false; }
   s.invulnT = Math.max(0, s.invulnT - h);
   s.fireCd -= h;
   if (s.minigunT > 0) s.minigunT = Math.max(0, s.minigunT - h);
   const inp = s.input;
 
-  if (s.ballT > 0) { stepBall(s, h); return; }
+  if (s.ballT > 0) { stepBall(s, h); return false; }
 
   if (s.frozenT > 0) {
     // Frozen solid: no turning, thrust or firing. The ship keeps drifting with the velocity it had
@@ -133,7 +136,7 @@ export function updateShip(s, h) {
       resolveTerrain(s);
     }
     if (s.frozenT === 0) simEvent('thawed', s);
-    return;
+    return false;
   }
 
   s.av = approach(s.av, inp.turn * P.rotSpeed, P.rotAccel * h);
@@ -168,7 +171,12 @@ export function updateShip(s, h) {
     s.x += s.vx * h; s.y += s.vy * h;
     resolveTerrain(s);
   }
-  if (!s.alive) return;
+  return s.alive;
+}
+
+export function updateShip(s, h) {
+  if (!moveShip(s, h)) return;
+  const inp = s.input;
   if (inp.fire && s.fireCd <= 0 && (s.ammo >= WEAPONS[s.weapon].cost || s.minigunT > 0 || (isPractice() && PR.infiniteAmmo))) fire(s);
   stepBigLaser(s, h);
 }

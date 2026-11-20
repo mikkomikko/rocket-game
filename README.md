@@ -18,12 +18,12 @@ npm run server    # online game server on ws://localhost:8787
 Start the server, then open the game with `?server=` in two browsers (or two tabs):
 
 ```sh
-npm run server                     # PORT=8787 MAP=cave SEED=7 by default
+npm run server                     # PORT=8787 MAP=cave SEED=7 by default; LAG=200 simulates a slow connection
 npm run dev
 # open http://localhost:5173/?server=ws://localhost:8787 twice
 ```
 
-The first browser to connect flies ship 1, the second ship 2; either set of keys steers your ship. The server runs the match and the browsers show it. For now online play covers the rock maps (cave, clear, open, pillars, maze, divide) without supply boxes, and both players see the split screen.
+The first browser to connect flies ship 1, the second ship 2; either set of keys steers your ship, and each player sees one full view of their own ship. The server runs the match; each browser predicts its own ship from the player's keys, so it responds at once even over a slow connection, and eases in the server's corrections. For now online play covers the rock maps (cave, clear, open, pillars, maze, divide) without supply boxes.
 
 ## Layout
 
@@ -39,7 +39,7 @@ The first browser to connect flies ship 1, the second ship 2; either set of keys
   - `src/render/`: Three.js scene and shaders, the drawing field, the Big laser beam, cameras and split screen, debug drawing.
   - `src/ui/`: HUD, header, map picker and art, tuning panel, skins, start screen.
   - `src/audio/sfx.js`: synthesized sound effects.
-  - `src/net/online.js`: online mode (`?server=`): sends input, applies the server's snapshots and replays its events.
+  - `src/net/online.js`: online mode (`?server=`): sends numbered inputs, predicts the player's own ship and reconciles it with each snapshot, draws the other ship between snapshots, and replays the server's events.
 - `packages/server`: the online game server (Node + `ws`). `src/server.js` seats two players, runs `stepSim` from their inputs and broadcasts snapshots and events; `test/` plays against it with real WebSocket clients.
 - `packages/shared`: code the browser and the server both run. Plain JS: no Three.js, DOM or audio, and it never imports from the client. Import it as `@rocket-duel/shared/<file>`.
   - `config.js` (tuning `P`, presets, weapons, practice toggles), `state.js` (`game`), `math.js`, `random.js` (seeded gameplay randomness).
@@ -48,6 +48,6 @@ The first browser to connect flies ship 1, the second ship 2; either set of keys
   - `events.js`: the simulation reports what happened (`simEvent('fired', ship, ...)`); listeners add sound and looks. `maps.js`: `mapRules()`, the active map's hooks, plugged in by whoever runs the game.
   - `level/mask.js`: the collision mask, carving, and level events (`onLevel('resized' | 'painted' | 'carved', fn)`).
   - `level/terrain.js`: every map's terrain generator and the `MAPS` list; `level/generate.js`: builds the chosen map into the mask.
-  - `test/`: Vitest tests. `level.test.js` checks every map builds the same mask as before; `duel.test.js` plays a duel in Node (flying, firing, digging, kills, respawn) and checks that the same seed and inputs replay exactly.
+  - `test/`: Vitest tests. `level.test.js` checks every map builds the same mask as before; `duel.test.js` plays a duel in Node (flying, firing, digging, kills, respawn), checks that the same seed and inputs replay exactly, and that replaying inputs from a snapshot predicts a ship exactly.
 
 Modules import each other in cycles (map code calls back into the core). That works because cross-module calls happen inside functions; code that runs at load time only uses modules that load earlier. `level/mask.js` reaches the scene and the active map through `levelHooks` for that reason.

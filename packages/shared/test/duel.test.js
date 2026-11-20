@@ -3,10 +3,10 @@ import { DEFAULTS, P } from '../src/config.js';
 import { game } from '../src/state.js';
 import { level } from '../src/level/mask.js';
 import { generateMap } from '../src/level/generate.js';
-import { onSim } from '../src/events.js';
+import { onSim, quietly } from '../src/events.js';
 import { seedRandom } from '../src/random.js';
 import { ships } from '../src/ships/ship.js';
-import { damage, respawn } from '../src/ships/physics.js';
+import { damage, moveShip, respawn } from '../src/ships/physics.js';
 import { cycleWeapon } from '../src/ships/weapons.js';
 import { B, clearBullets } from '../src/bullets.js';
 import { stepSim } from '../src/sim.js';
@@ -83,6 +83,29 @@ describe('the duel runs without a browser', () => {
     run(3);
     expect(counts.blast).toBeGreaterThan(0);
     expect(B.on.every((v) => v === 0)).toBe(true);
+  });
+
+  it('predicts a ship exactly by replaying its inputs from a snapshot', () => {
+    newMatch('open', 3);
+    const s = ships[0];
+    ships[1].active = false;   // nothing else pushes it, so the replay should land exactly
+    const inputs = Array.from({ length: 600 }, (_, k) => ({ turn: Math.sin(k / 40), thrust: k % 200 < 120 ? 1 : 0, fire: false }));
+    const FIELDS = ['x', 'y', 'vx', 'vy', 'a', 'av', 'thrust', 'landed', 'hp'];
+    let snapshot;
+    inputs.forEach((inp, k) => {
+      s.input = inp;
+      stepSim(H);
+      if (k === 299) snapshot = Object.fromEntries(FIELDS.map((f) => [f, s[f]]));
+    });
+    const server = FIELDS.map((f) => s[f]);
+    const fired = counts.fired || 0;
+    // The browser's side: take the snapshot, replay the inputs the server applied after it.
+    Object.assign(s, snapshot);
+    game.predicting = true;
+    quietly(() => { for (const inp of inputs.slice(300)) { s.input = inp; moveShip(s, H); } });
+    game.predicting = false;
+    expect(FIELDS.map((f) => s[f])).toEqual(server);
+    expect(counts.fired || 0).toBe(fired);   // replays are silent
   });
 
   it('plays out the same way twice with the same seed and inputs', () => {

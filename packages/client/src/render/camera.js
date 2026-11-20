@@ -9,6 +9,7 @@ import { shapeGeo, views } from '../ships/view.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { ENEMY_RED } from '../maps/starship/constants.js';
 import { activeMap } from '../maps/index.js';
+import { drawPos, net } from '../net/online.js';
 
 /* ------------------------------------------------------------------ *
  * Cameras, split screen and the loop
@@ -23,8 +24,13 @@ new ResizeObserver(() => {
   renderer.setSize(viewW, viewH, false);
 }).observe(stage);
 
+// Which ship each view follows: online, one view of your own ship; in solo play, one of ship 1; else one each.
+export const singleView = () => isSolo() || net.online;
+export const viewShip = (i) => (net.online ? net.id : i);
+export const viewSlot = (id) => (net.online ? (id === net.id ? 0 : -1) : isSolo() ? (id === 0 ? 0 : -1) : id);
+
 export function viewRects() {
-  if (isSolo()) return [{ x: 0, y: 0, w: viewW, h: viewH }];
+  if (singleView()) return [{ x: 0, y: 0, w: viewW, h: viewH }];
   if (P.split === 'stacked') {
     const top = Math.floor(viewH / 2);
     return [{ x: 0, y: viewH - top, w: viewW, h: top }, { x: 0, y: 0, w: viewW, h: viewH - top }];
@@ -53,7 +59,7 @@ function updatePointer(i, cx, cy, hw, hh, a) {
   const on = level.builtMap === 'clear' && !isPractice() && me.active && o.active && o.alive;
   g.visible = on;
   if (!on) return;
-  const ox = o.px + (o.x - o.px) * a, oy = o.py + (o.y - o.py) * a;
+  const { x: ox, y: oy } = drawPos(o, a);
   const k = 1 / P.zoom, m = 26 * k;
   const dx = ox - cx, dy = oy - cy;
   g.scale.setScalar(k * 1.3);
@@ -103,11 +109,13 @@ function updateEnemyArrows(i, cx, cy, hw, hh) {
 
 let camZ = 1;   // extra zoom while a map's camera focus is on
 export function updateCamera(i, rect, dt, alpha) {
-  const s = ships[i], cam = cams[i], c = views[i].cam;
+  const id = viewShip(i), s = ships[id], cam = cams[i], c = views[id].cam;
+  cam.layers.set(0); cam.layers.enable(id + 1);   // this ship's own layer: its aim guide and pointers
   let tx, ty;
   if (s.alive) {
-    tx = s.px + (s.x - s.px) * alpha + s.vx * P.lookahead;
-    ty = s.py + (s.y - s.py) * alpha + s.vy * P.lookahead;
+    const p = drawPos(s, alpha);
+    tx = p.x + s.vx * P.lookahead;
+    ty = p.y + s.vy * P.lookahead;
   } else { tx = s.deathX; ty = s.deathY; }
   const focus = activeMap().cameraFocus?.();
   if (focus) [tx, ty] = focus;
@@ -129,6 +137,6 @@ export function updateCamera(i, rect, dt, alpha) {
   cam.left = -hw; cam.right = hw; cam.top = hh; cam.bottom = -hh;
   cam.position.set(cx + sx, cy + sy, 5);
   cam.updateProjectionMatrix();
-  updatePointer(i, cx, cy, hw, hh, alpha);
-  updateEnemyArrows(i, cx, cy, hw, hh);
+  updatePointer(id, cx, cy, hw, hh, alpha);
+  updateEnemyArrows(id, cx, cy, hw, hh);
 }

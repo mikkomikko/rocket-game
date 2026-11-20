@@ -19,5 +19,9 @@
 .stage[data-split="single"] .divider, .stage[data-split="single"] .hud[data-p="1"], .stage[data-split="single"] .hud-score { display: none; }
 .stage[data-split="single"] .vignette { background: radial-gradient(ellipse at center, transparent 62%, rgba(6, 4, 22, 0.5) 100%); }
 .stage[data-split="single"] .hud[data-p="0"] { left: 12px; width: 260px; }
+/* Online: one view of your own ship with its panel and score. Player 2's panel takes Player 1's place. */
+.stage[data-online] .hud-score { display: inline; }
+.stage[data-split="single"][data-me="1"] .hud[data-p="0"] { display: none; }
+.stage[data-split="single"][data-me="1"] .hud[data-p="1"] { display: block; left: 12px; width: 260px; }
 .hud-tele { display: none; margin-top: 6px; white-space: pre-line; font-variant-numeric: tabular-nums; color: #dcd8f7; line-height: 1.55; }
 .stage[data-split="single"] .hud-tele { display: block; }

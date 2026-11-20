@@ -7,9 +7,11 @@ import { B, MAXB } from './bullets.js';
  *   server → browser
  *     { t: 'welcome', id, P, carves }   your ship id (0 or 1), the match tuning, every crater so far
  *     { t: 'full' }                     both ships are taken
- *     { t: 'snap', ships, bullets, events }   about 30 times a second
+ *     { t: 'snap', ships, bullets, events, acks }   about 30 times a second; acks[id] is the last
+ *                                                    input the server has applied to ship id
  *   browser → server
- *     { t: 'input', turn, thrust, fire }
+ *     { t: 'input', seq, list }        one input per simulation step, [turn, thrust, fire], numbered from seq.
+ *                                      The server applies them in order, one per step.
  *     { t: 'cycle' }                    switch weapon
  *
  * events is everything that happened since the last snap, in order: [type, ...args] for simulation

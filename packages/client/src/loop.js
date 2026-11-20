@@ -23,7 +23,7 @@ import { field } from './render/field.js';
 import { stepEffects } from './fx/effects.js';
 import { views } from './ships/view.js';
 import { stepSim } from '@rocket-duel/shared/sim.js';
-import { net, netAlpha, netStep, sendInput } from './net/online.js';
+import { drawPos, easeCorrections, net, netStep, readOnlineInput, sendInputs } from './net/online.js';
 
 // The fixed-step simulation (step) and the render loop (frame).
 function step(h) {
@@ -49,7 +49,7 @@ function frame(now) {
   if (fpsAcc > 0.5) { mon.fps = Math.round(fpsFrames / fpsAcc); fpsAcc = 0; fpsFrames = 0; }
 
   readInputs();
-  if (net.online) sendInput();
+  if (net.online) readOnlineInput();
   const h = 1 / P.physicsHz;
   if (!game.paused && !game.picking) {
     acc += dt * P.timeScale;
@@ -57,15 +57,17 @@ function frame(now) {
     while (acc >= h && n < 40) { step(h); acc -= h; n++; }
     if (n >= 40) acc = 0;
   }
-  const alpha = net.online ? netAlpha() : clamp(acc / h, 0, 1);
+  if (net.online) sendInputs();
+  easeCorrections(dt);
+  const alpha = clamp(acc / h, 0, 1);
 
   if (field.dirty) { field.tex.needsUpdate = true; field.dirty = false; }
   for (const s of ships) {
-    const v = views[s.id];
-    if (!s.alive) { v.group.visible = false; v.flame.visible = false; drawDebug(s, alpha); continue; }
+    const v = views[s.id], p = drawPos(s, alpha);
+    if (!s.alive) { v.group.visible = false; v.flame.visible = false; drawDebug(s, p.k); continue; }
     v.group.visible = true;
-    v.group.position.set(s.px + (s.x - s.px) * alpha, s.py + (s.y - s.py) * alpha, 1);
-    v.group.rotation.z = s.pa + (s.a - s.pa) * alpha;
+    v.group.position.set(p.x, p.y, 1);
+    v.group.rotation.z = p.a;
     v.group.scale.setScalar(P.shipSize);
     v.shield.visible = s.invulnT > 0;
     if (v.shield.visible) v.shield.material.opacity = (0.45 + 0.25 * Math.sin(game.time * 9)) * Math.min(1, s.invulnT / 0.4);
@@ -91,7 +93,7 @@ function frame(now) {
       v.ball.scale.setScalar(Math.min(1, 0.4 + age * 5) * (1 + 0.04 * Math.sin(game.time * 9)));
       u.shine.rotation.z = -v.group.rotation.z;   // the highlight stays put while the ball spins
     }
-    drawDebug(s, alpha);
+    drawDebug(s, p.k);
   }
   for (const m of allMaps()) m.draw?.(now, alpha);
   drawBoxes(now);
