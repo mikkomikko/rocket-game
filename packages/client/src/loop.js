@@ -3,7 +3,7 @@ import { BALL_IDX, isPractice, P, PR, WEAPONS } from '@rocket-duel/shared/config
 import { mon } from './state.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { clamp } from '@rocket-duel/shared/math.js';
-import { gridMesh, renderer, scene, skyMat } from './render/scene.js';
+import { gridMesh, renderer, scene, skyMat, uploadField } from './render/scene.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { shipMass } from '@rocket-duel/shared/ships/physics.js';
 import { pointScale } from './fx/pools.js';
@@ -19,7 +19,6 @@ import { updateHud } from './ui/hud.js';
 import { sfx } from './audio/sfx.js';
 import { updateWeaponBoxes } from './ui/weaponBox.js';
 import { activeMap, allMaps } from './maps/index.js';
-import { field } from './render/field.js';
 import { stepEffects } from './fx/effects.js';
 import { views } from './ships/view.js';
 import { stepSim } from '@rocket-duel/shared/sim.js';
@@ -61,7 +60,7 @@ function frame(now) {
   easeCorrections(dt);
   const alpha = clamp(acc / h, 0, 1);
 
-  if (field.dirty) { field.tex.needsUpdate = true; field.dirty = false; }
+  uploadField();
   for (const s of ships) {
     const v = views[s.id], p = drawPos(s, alpha);
     if (!s.alive) { v.group.visible = false; v.flame.visible = false; drawDebug(s, p.k); continue; }

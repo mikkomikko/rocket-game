@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clamp } from '@rocket-duel/shared/math.js';
 import { maskAt, solidAt } from '@rocket-duel/shared/level/mask.js';
 import { scene } from '../render/scene.js';
-import { EMBER, pointScale, WHITE } from './pools.js';
+import { EMBER, pointScale, uploadUsed, WHITE } from './pools.js';
 import { emit } from './particles.js';
 import { activeMap, groundRGB } from '../maps/index.js';
 
@@ -141,7 +141,7 @@ export function drawTerrainBits() {
     n++;
   }
   debGeo.setDrawRange(0, n);
-  for (const k of ['position', 'tint', 'size', 'alpha', 'rot', 'shape']) A[k].needsUpdate = true;
+  uploadUsed(debGeo, n, 'position', 'tint', 'size', 'alpha', 'rot', 'shape');
 }
 
 // Which way the surface at (x, y) faces, how much solid is around, and whether it is a hard wall or pad.

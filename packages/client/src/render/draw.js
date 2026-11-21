@@ -5,7 +5,7 @@ import { solidAt } from '@rocket-duel/shared/level/mask.js';
 import { hullWorld } from '@rocket-duel/shared/ships/ship.js';
 import { TRAJ_MAX, views } from '../ships/view.js';
 import { shipMass } from '@rocket-duel/shared/ships/physics.js';
-import { bulletGeo } from '../fx/pools.js';
+import { bulletGeo, uploadUsed } from '../fx/pools.js';
 import { B, BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
 import { bulletColor, MAXT, TR, trailGeo, trailQuad } from '../fx/trails.js';
 import { drawTerrainBits } from '../fx/debris.js';
@@ -38,12 +38,9 @@ export function drawPools() {
     n++;
   }
   bulletGeo.setDrawRange(0, n);
-  bulletGeo.attributes.position.needsUpdate = true;
-  bulletGeo.attributes.tint.needsUpdate = true;
-  bulletGeo.attributes.size.needsUpdate = true;
+  uploadUsed(bulletGeo, n, 'position', 'tint', 'size');
   trailGeo.setDrawRange(0, tn * 6);
-  trailGeo.attributes.position.needsUpdate = true;
-  trailGeo.attributes.color.needsUpdate = true;
+  uploadUsed(trailGeo, tn * 6, 'position', 'color');
 
   const pp = partGeo.attributes.position.array, pc = partGeo.attributes.tint.array, ps = partGeo.attributes.size.array;
   n = 0;
@@ -56,9 +53,7 @@ export function drawPools() {
     n++;
   }
   partGeo.setDrawRange(0, n);
-  partGeo.attributes.position.needsUpdate = true;
-  partGeo.attributes.tint.needsUpdate = true;
-  partGeo.attributes.size.needsUpdate = true;
+  uploadUsed(partGeo, n, 'position', 'tint', 'size');
   drawTerrainBits();
 
   const sp = smokeGeo.attributes.position.array, ss = smokeGeo.attributes.size.array, sa = smokeGeo.attributes.alpha.array;
@@ -72,9 +67,7 @@ export function drawPools() {
     n++;
   }
   smokeGeo.setDrawRange(0, n);
-  smokeGeo.attributes.position.needsUpdate = true;
-  smokeGeo.attributes.size.needsUpdate = true;
-  smokeGeo.attributes.alpha.needsUpdate = true;
+  uploadUsed(smokeGeo, n, 'position', 'size', 'alpha');
 }
 
 export function drawDebug(s, alpha) {

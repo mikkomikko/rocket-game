@@ -1,8 +1,9 @@
 import { H, level, onLevel, W } from '@rocket-duel/shared/level/mask.js';
 
 /* The level as the GPU draws it: a softened copy of the mask (R = rock, G = landing pad), rows bottom
- * to top, so the terrain shader can draw smooth, anti-aliased cave walls at any zoom. */
-export const field = { data: new Uint8Array(W * H * 2), tex: null, dirty: false };
+ * to top, so the terrain shader can draw smooth, anti-aliased cave walls at any zoom.
+ * Rows lo to hi have changed since the last upload; full: the texture has never been uploaded whole. */
+export const field = { data: new Uint8Array(W * H * 2), tex: null, dirty: false, lo: H, hi: -1, full: true };
 
 // Rock colours by height: a smooth wave through plum, wine, rust and copper (the terrain shader uses the same formula).
 const COPPER = [[16, 11, 30], [26, 15, 42], [42, 20, 56], [64, 28, 66]];
@@ -52,10 +53,12 @@ export function paintRegion(x0, y0, x1, y1) {
     }
   }
   field.dirty = true;
+  field.lo = Math.min(field.lo, H - 1 - y1); field.hi = Math.max(field.hi, H - 1 - y0);
 }
 
 onLevel('resized', () => {
   field.data = new Uint8Array(W * H * 2);
+  field.full = true;
   rowColor.length = 0;
   for (let r = 0; r < H; r++) rowColor.push(rockRGB(H - r));
 });

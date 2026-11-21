@@ -272,6 +272,26 @@ function worldResized() {
 }
 onLevel('resized', worldResized);
 
+// Sends the terrain rows that changed to the GPU. The field is megabytes, and a shot only digs a few
+// rows: uploading it whole on every hit stalls the frame. (Not renderer.copyTextureToTexture: it reads
+// GL state back with getParameter, and that stalls too.)
+export function uploadField() {
+  if (!field.dirty) return;
+  if (field.full) { field.tex.needsUpdate = true; field.full = false; }
+  else {
+    const gl = renderer.getContext(), { state } = renderer;
+    renderer.initTexture(field.tex);   // makes sure the whole texture is on the GPU first
+    state.bindTexture(gl.TEXTURE_2D, renderer.properties.get(field.tex).__webglTexture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, field.lo, W, field.hi - field.lo + 1, gl.RG, gl.UNSIGNED_BYTE, field.data, field.lo * W * 2);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    state.unbindTexture();
+  }
+  field.dirty = false; field.lo = H; field.hi = -1;
+}
+
 // A soft round glow, reused for ship auras and engine flames.
 const glowTex = (() => {
   const c = document.createElement('canvas');

@@ -44,6 +44,15 @@ export function pointGeo(n) {
   g.setAttribute('size', new THREE.BufferAttribute(new Float32Array(n), 1));
   return g;
 }
+// Sends only the first n items of these attributes to the GPU: the pools are large and mostly empty,
+// and uploading them whole every frame costs megabytes a second.
+export function uploadUsed(geo, n, ...names) {
+  for (const k of names) {
+    const a = geo.attributes[k];
+    a.clearUpdateRanges();
+    if (n > 0) { a.addUpdateRange(0, n * a.itemSize); a.needsUpdate = true; }
+  }
+}
 export const bulletGeo = pointGeo(BULLET_SLOTS);
 const bulletPts = new THREE.Points(bulletGeo, pointMaterial(0.9));
 bulletPts.frustumCulled = false;
