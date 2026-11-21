@@ -1,0 +1,29 @@
+/* Online play: the server runs the match, so local-only controls go away. */
+#btnLeave { display: none; }
+.app[data-online] #btnLeave { display: inline-flex; }
+.app[data-online] #btnNewGame, .app[data-online] #btnRestart, .app[data-online] #btnPause, .app[data-online] #btnPanel,
+.app[data-online] .panel, .app[data-online] .hud-row { display: none; }
+.start-join { margin: 0 0 4px; padding: 12px 0 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); color: #dcd8f7; font-size: 15px; }
+.start-join[hidden], .start-row[hidden] { display: none; }
+
+/* The card at the top of the game view: connecting, waiting for an opponent, reconnecting. */
+.netcard {
+  position: absolute; z-index: 4; top: 12px; left: 50%; transform: translateX(-50%);
+  width: min(440px, calc(100% - 32px));
+  padding: 14px 16px; border-radius: 16px;
+  background: rgba(14, 11, 38, 0.92); border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  color: #efecff; text-align: center;
+}
+.netcard[hidden] { display: none; }
+.netcard-title { margin: 0; font-size: 17px; font-weight: 750; font-variation-settings: "ROND" 100; }
+.netcard-text { margin: 4px 0 0; font-size: 13px; color: #c9c4ec; text-wrap: pretty; }
+.netcard-link { display: flex; gap: 8px; margin-top: 10px; }
+.netcard-link[hidden] { display: none; }
+.netcard-link input {
+  flex: 1; min-width: 0; font: inherit; font-size: 16px; color: #efecff;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; padding: 6px 10px;
+}
+.netcard-link input:focus-visible { outline: 2px solid var(--p1); outline-offset: 1px; }
+.netcard > .pbtn { margin-top: 10px; }
+.netcard > .pbtn[hidden] { display: none; }

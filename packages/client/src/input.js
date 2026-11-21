@@ -8,7 +8,7 @@ import { nextMap, picker, pickerKey } from './ui/mapPicker.js';
 import { pane } from './ui/tuningPanel.js';
 import { openStart, startEl, startKey } from './ui/startScreen.js';
 import { activeMap } from './maps/index.js';
-import { switchWeapon } from './net/online.js';
+import { net, switchWeapon } from './net/online.js';
 
 /* ------------------------------------------------------------------ *
  * Input: keyboard and gamepads merged into one action state per player
@@ -37,13 +37,15 @@ window.addEventListener('keydown', (e) => {
     if (!game.paused) switchWeapon(ships[isSolo() || e.code === 'KeyS' ? 0 : 1]);
     return;
   }
-  if (e.code === 'KeyP' && !e.repeat) { e.preventDefault(); togglePause(); }
   if (e.code === 'KeyM' && !e.repeat) { e.preventDefault(); P.sound = !P.sound; pane.refresh(); }
-  if (e.code === 'KeyH' && !e.repeat) { e.preventDefault(); togglePanel(); }
   if (e.code === 'KeyU' && !e.repeat) { e.preventDefault(); toggleUI(); }
+  if (!e.repeat && activeMap().keydown?.(e)) { e.preventDefault(); return; }   // online, a map sends its keys as mapAction
+  // Online, the server runs the match: no pausing, tuning, restarting or changing maps from here.
+  if (net.online) return;
+  if (e.code === 'KeyP' && !e.repeat) { e.preventDefault(); togglePause(); }
+  if (e.code === 'KeyH' && !e.repeat) { e.preventDefault(); togglePanel(); }
   if (e.code === 'KeyN' && !e.repeat) { e.preventDefault(); openStart(); }
   if (e.code === 'KeyR' && !e.repeat && isPractice()) { e.preventDefault(); restartMatch(); }
-  if (!e.repeat && activeMap().keydown?.(e)) e.preventDefault();
   if (e.code === 'KeyQ' && !e.repeat && !isPractice()) { e.preventDefault(); nextMap(); }
 });
 window.addEventListener('keyup', (e) => { keysDown.delete(e.code); });

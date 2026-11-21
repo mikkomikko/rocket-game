@@ -1,0 +1,33 @@
+# Fly.io: `fly launch --copy-config --no-deploy` once (pick your own app name), then `fly deploy`.
+# Set the allowed page origins to your app's address: fly secrets set ORIGINS=https://<app>.fly.dev
+app = "rocket-duel"
+primary_region = "arn"
+
+[build]
+
+[env]
+  PORT = "8080"
+  MAX_ROOMS = "200"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Rooms live in memory: one machine that keeps running while anyone plays.
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 400
+    hard_limit = 500
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

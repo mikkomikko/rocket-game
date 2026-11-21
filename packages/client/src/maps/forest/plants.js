@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { topBelow } from '@rocket-duel/shared/maps/forest.js';
 import { P } from '@rocket-duel/shared/config.js';
 import { clamp, mulberry32 } from '@rocket-duel/shared/math.js';
 import { H, level, solidAt, W } from '@rocket-duel/shared/level/mask.js';
@@ -280,11 +281,6 @@ export function buildPlants() {
     }
   }
   rebuildFrontPlants();
-}
-// World y of the first solid ground at or below (x, y).
-export function topBelow(x, y) {
-  while (y > 0 && !solidAt(x, y)) y -= 1;
-  return y + 1;
 }
 // A crater under a plant knocks it over in a burst of leaves.
 export function plantsAfterCarve(x, y, r) {

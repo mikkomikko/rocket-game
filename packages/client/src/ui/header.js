@@ -1,7 +1,7 @@
 import { game } from '@rocket-duel/shared/state.js';
 import { stage } from '../render/scene.js';
 import { WAVES } from '../maps/starship/constants.js';
-import { chooseLevel, restartStarship } from '../maps/starship/starship.js';
+import { askRestart, pickLevel } from '../maps/starship/starship.js';
 import { restartMatch } from '../game/modes.js';
 
 /* ------------------------------------------------------------------ *
@@ -20,15 +20,15 @@ export function togglePanel() {
   btnPanel.setAttribute('aria-pressed', String(!hidden));
 }
 document.getElementById('btnRestart').addEventListener('click', restartMatch);
-document.getElementById('finishRestart').addEventListener('click', restartStarship);
-// The five level buttons on the Starship's level chooser.
+document.getElementById('finishRestart').addEventListener('click', askRestart);
+// The five level buttons on the Starship's level chooser (online the server runs the choice).
 WAVES.slice(0, 5).forEach((w, i) => {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'lvl-btn';
   b.innerHTML = `<b>${i + 1}</b><span>${w.bots} robot${w.bots > 1 ? 's' : ''}</span>`;
   b.setAttribute('aria-label', `Level ${i + 1}: ${w.bots} robot${w.bots > 1 ? 's' : ''}`);
-  b.addEventListener('click', () => chooseLevel(i + 1));
+  b.addEventListener('click', () => pickLevel(i + 1));
   document.getElementById('levelRow').append(b);
 });
 

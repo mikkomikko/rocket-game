@@ -1,36 +1,20 @@
 import * as THREE from 'three';
 import { mulberry32 } from '@rocket-duel/shared/math.js';
-import { H, W } from '@rocket-duel/shared/level/mask.js';
+import { H, level, W } from '@rocket-duel/shared/level/mask.js';
+import { HANGAR_SHIPS } from '@rocket-duel/shared/level/terrain.js';
 import { glowMat } from '../../render/scene.js';
 import { shapeGeo } from '../../ships/view.js';
 import { canvasTex, girderMat, stripedPlane } from '../floors/floors.js';
-import { backWallMat, resetStarship, SH, SHIP_GROUP } from '../starship/starship.js';
-import { buildAmmo, buildMedkits } from '../starship/supplies.js';
+import { backWallMat, SHIP_GROUP } from '../starship/starship.js';
 import { makeRobotMesh } from './robotMesh.js';
-import { resetRobot } from './robot.js';
-import { HANGAR_SHIPS } from '@rocket-duel/shared/level/terrain.js';
 
 /* ------------------------------------------------------------------ *
- * Robot hangar: parked starships, and a giant robot that drops in from the roof.
- * It shoots a laser from its eye, punches with stretchy piston arms and sends out small robots.
+ * Robot hangar looks: parked starships, the roof hatch and the giant robot's mesh (RV). The robot
+ * itself runs in the shared rules (shared maps/hangar.js); robot.js draws it.
  * ------------------------------------------------------------------ */
-export const ROBOT_MAXHP = 1400, ROBOT_REACH = 480, ROBOT_XMIN = 1150, ROBOT_HIP = 200;
-export const RB = { on: false, state: 'off', x: 1450, y: 56, vy: 0, dir: -1, hp: ROBOT_MAXHP, flash: 0, phase: 0, bob: 0, laserCd: 3, punchCd: 2, spawnCd: 6, spawning: 0, hatch: 0, roof: 0, t: 0, laser: null, dead: false, beamW: 34, mesh: null, roofMesh: null,
-  arms: [{ side: -1, fx: 0, fy: 0, mode: 'rest', t: 0, ux: 0, uy: -1, hit: false }, { side: 1, fx: 0, fy: 0, mode: 'rest', t: 0, ux: 0, uy: -1, hit: false }] };
+export { ROBOT_HIP } from '@rocket-duel/shared/maps/hangar.js';
 export const ROBOT_ORANGE = new THREE.Color('#ffb020'), ROBOT_DUST = new THREE.Color('#9aa0b4');
-// Robot-local point to world, including the tilt when it falls over (it pivots on the edge it falls toward).
-export function rbLocal(lx, ly) {
-  const px = (RB.fd || 1) * 112, c = Math.cos(RB.rot || 0), sn = Math.sin(RB.rot || 0), dx = lx - px;
-  return [RB.x + px + dx * c - ly * sn, RB.y + dx * sn + ly * c];
-}
-export const rbShoulder = (side) => rbLocal(side * 118, 385 + RB.bob);
-export const rbRest = (side) => { const [sx, sy] = rbShoulder(side); return [sx + side * 28, sy - 165 + 4 * Math.sin(RB.phase * 0.5 + side)]; };
-export function robotEye() { return rbLocal(RB.dir * 14, ROBOT_HIP + 252 + RB.bob); }
-// It breaks a bit more at 80 %, 60 %, 45 %, 30 % and 15 % health.
-const ROBOT_STAGES = [0.8, 0.6, 0.45, 0.3, 0.15];
-export const robotStage = () => ROBOT_STAGES.filter((f) => RB.hp < ROBOT_MAXHP * f).length;
-export const robotAngry = () => RB.hp < ROBOT_MAXHP * 0.5;
-
+export const RV = { mesh: null, roofMesh: null };
 
 const signTex = canvasTex(256, 64, (g) => {
   g.fillStyle = '#1a1d2e'; g.fillRect(0, 0, 256, 64);
@@ -64,7 +48,7 @@ export const stencilTex = canvasTex(128, 40, (g) => {
 export const rivetGeo = new THREE.CircleGeometry(2.2, 8);
 
 export function buildHangar() {
-  const sp = SH.spec;
+  const sp = level.spec;
   const back = new THREE.Mesh(new THREE.PlaneGeometry(W - 80, H - 112), backWallMat);
   back.position.set(W / 2, H / 2, -0.7);
   SHIP_GROUP.add(back);
@@ -111,12 +95,7 @@ export function buildHangar() {
   roof.add(hl, hr);
   roof.position.set(1450, H - 47, 0.36);
   SHIP_GROUP.add(roof);
-  RB.roofMesh = { hl, hr };
-  buildAmmo();
-  buildMedkits();
-  SH.doorMesh = null; SH.doorSign = null;
-  RB.mesh = makeRobotMesh();
-  SHIP_GROUP.add(RB.mesh.g, ...RB.mesh.arms.map((a) => a.g));
-  resetRobot();
-  resetStarship();
+  RV.roofMesh = { hl, hr };
+  RV.mesh = makeRobotMesh();
+  SHIP_GROUP.add(RV.mesh.g, ...RV.mesh.arms.map((a) => a.g));
 }

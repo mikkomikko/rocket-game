@@ -6,7 +6,7 @@ import { respawn } from '@rocket-duel/shared/ships/physics.js';
 import { clearBullets } from '@rocket-duel/shared/bullets.js';
 import { DB } from '../fx/debris.js';
 import { PT } from '../fx/particles.js';
-import { resetBoxes } from '../systems/boxes.js';
+import { resetBoxes } from '@rocket-duel/shared/boxes.js';
 import { closePicker, updateMapButton } from '../ui/mapPicker.js';
 import { fLevel, fPractice } from '../ui/tuningPanel.js';
 import { activeMap, applyTheme } from '../maps/index.js';

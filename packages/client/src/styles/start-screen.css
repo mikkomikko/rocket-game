@@ -18,7 +18,7 @@
 .start-title { margin: 0 0 14px; font-size: 34px; line-height: 1; font-weight: 880; letter-spacing: -0.02em; font-variation-settings: "ROND" 100; }
 .start-row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .start-label { margin: 6px 0 0; font-size: 15px; font-weight: 720; color: #b9b3e0; font-variation-settings: "ROND" 80; }
-.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .seg-btn {
   font: inherit; color: inherit; text-align: left; cursor: pointer;
   display: flex; align-items: center; gap: 12px;

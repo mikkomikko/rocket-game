@@ -2,6 +2,7 @@ import { isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { level } from '@rocket-duel/shared/level/mask.js';
 import { MAPS } from '@rocket-duel/shared/level/terrain.js';
+import { ONLINE_MAPS } from '@rocket-duel/shared/net.js';
 import { keysDown } from '../input.js';
 import { setMode } from '../game/modes.js';
 import { togglePause } from './header.js';
@@ -9,27 +10,32 @@ import { closePicker, picker } from './mapPicker.js';
 import { MAP_ART, svgWrap } from './mapArt.js';
 import { pane } from './tuningPanel.js';
 import { applySkins, rocketSVG, skinOf, SKINS } from './skins.js';
+import { connect, hasSeat, net } from '../net/online.js';
+import { appEl } from './header.js';
 
 /* ------------------------------------------------------------------ *
  * Start screen: players, skins and map. Shown when the page opens and
- * from the New game button (or N).
+ * from the New game button (or N). Online starts a room on the server; an
+ * invite link (?room=abc123) opens it as "Join online game" instead.
  * ------------------------------------------------------------------ */
 const SETUP_KEY = 'rocket-duel-setup-v1';
 export const startEl = document.getElementById('startScreen');
-export const setup = { players: 2, skins: ['sun', 'sky'], map: 'cave' };
+export const setup = { players: 2, online: false, skins: ['sun', 'sky'], map: 'cave' };
+const joinRoom = new URLSearchParams(location.search).get('room');
 let gameStarted = false;
 try {
   const saved = JSON.parse(localStorage.getItem(SETUP_KEY) || 'null');
   if (saved) {
     if (saved.players === 1 || saved.players === 2) setup.players = saved.players;
+    setup.online = saved.online === true;
     if (Array.isArray(saved.skins) && saved.skins.length === 2 && saved.skins.every((k) => SKINS.some((x) => x.id === k)) && saved.skins[0] !== saved.skins[1]) setup.skins = saved.skins;
     if (saved.map === 'practice' || MAPS[saved.map]) setup.map = saved.map;
   }
 } catch (e) { /* no saved setup */ }
 const hashMode = location.hash.slice(1);
-if (hashMode === 'practice') { setup.players = 1; setup.map = 'practice'; }
-else if (hashMode === 'solo') setup.players = 1;
-else if (hashMode === 'duel') setup.players = 2;
+if (hashMode === 'practice') { setup.players = 1; setup.map = 'practice'; setup.online = false; }
+else if (hashMode === 'solo') { setup.players = 1; setup.online = false; }
+else if (hashMode === 'duel' && !setup.online) setup.players = 2;
 if (setup.players === 2 && setup.map === 'practice') setup.map = 'cave';
 
 const PRACTICE_CARD = {
@@ -42,13 +48,23 @@ const PRACTICE_CARD = {
     <path d="M60 86 C 70 40, 110 30, 132 50" fill="none" stroke="${skinOf(setup.skins[0]).hex}" stroke-width="1.6" stroke-dasharray="3 4" opacity="0.7"/>
     <g transform="translate(60 86) rotate(20) scale(1.1)">${rocketSVG(skinOf(setup.skins[0]).hex).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`),
 };
-const startMapList = () => (setup.players === 1 ? ['practice'] : []).concat(Object.keys(MAPS));
+const startMapList = () => (setup.online ? ONLINE_MAPS : (setup.players === 1 ? ['practice'] : []).concat(Object.keys(MAPS)));
+// Keeps the chosen map one the current choice of players can play.
+function fitMap() { if (!startMapList().includes(setup.map)) setup.map = MAPS[P.map] && startMapList().includes(P.map) ? P.map : 'cave'; }
+fitMap();
 
 function renderStart() {
+  const joining = !!joinRoom, online = joining || setup.online;
+  document.getElementById('startTitle').textContent = joining ? 'Join online game' : 'New game';
+  document.getElementById('startJoin').hidden = !joining;
+  document.getElementById('startPlayersRow').hidden = joining;
+  document.getElementById('startMapRow').hidden = joining;
+  document.getElementById('startGo').textContent = joining ? 'Join game' : setup.online ? 'Create online game' : 'Start game';
+  startEl.querySelector('.start-hint').innerHTML = online ? `<kbd>Enter</kbd>${joining ? 'join' : 'create the game'}` : '<kbd>Enter</kbd>start <kbd>N</kbd>new game during play';
   // Players
   startEl.querySelectorAll('.seg-btn').forEach((b) => {
-    const n = +b.dataset.players;
-    b.setAttribute('aria-pressed', String(setup.players === n));
+    const k = b.dataset.players, n = +k;
+    b.setAttribute('aria-pressed', String(k === 'online' ? setup.online : !setup.online && setup.players === n));
     b.querySelector('.seg-ico').innerHTML = (n === 1 ? [0] : [0, 1]).map((i) => rocketSVG(skinOf(setup.skins[i]).hex)).join('');
   });
   // Skins
@@ -57,10 +73,11 @@ function renderStart() {
   [0, 1].forEach((i) => {
     const row = document.createElement('div');
     row.className = 'skin-row';
-    row.hidden = setup.players === 1 && i === 1;
+    row.hidden = (online || setup.players === 1) && i === 1;
     const cur = skinOf(setup.skins[i]), other = setup.skins[1 - i];
+    const who = online ? 'Your ship' : `Player ${i + 1}`;
     row.style.setProperty('--skin', cur.hex);
-    row.innerHTML = `<span class="skin-preview">${rocketSVG(cur.hex)}</span><div><div class="skin-who">Player ${i + 1} <span>${cur.name}</span></div><div class="swatches" role="group" aria-label="Player ${i + 1} colour"></div></div>`;
+    row.innerHTML = `<span class="skin-preview">${rocketSVG(cur.hex)}</span><div><div class="skin-who">${who} <span>${cur.name}</span></div><div class="swatches" role="group" aria-label="${who} colour"></div></div>`;
     const sw = row.querySelector('.swatches');
     for (const k of SKINS) {
       const b = document.createElement('button');
@@ -68,13 +85,14 @@ function renderStart() {
       b.className = 'swatch';
       b.style.setProperty('--c', k.hex);
       b.setAttribute('aria-pressed', String(k.id === cur.id));
-      const taken = setup.players === 2 && k.id === other;
+      const taken = !online && setup.players === 2 && k.id === other;
       if (taken) b.setAttribute('aria-disabled', 'true');
       b.title = taken ? `${k.name} (Player ${2 - i} has it)` : k.name;
       b.setAttribute('aria-label', b.title);
       b.addEventListener('click', () => {
         if (taken) return;
-        // In 1 player mode, Player 2 swaps over if it had this colour, so a later 2 player game still has two colours.
+        // In 1 player and online games, Player 2 swaps over if it had this colour, so a later 2 player game
+        // still has two colours (online, the second colour is the opponent's).
         if (k.id === other) setup.skins[1 - i] = setup.skins[i];
         setup.skins[i] = k.id;
         renderStart();
@@ -114,18 +132,23 @@ function renderStart() {
   document.getElementById('startBack').hidden = !gameStarted;
 }
 startEl.querySelectorAll('.seg-btn').forEach((b) => b.addEventListener('click', () => {
-  setup.players = +b.dataset.players;
-  if (setup.players === 2 && setup.map === 'practice') setup.map = MAPS[P.map] ? P.map : 'cave';
+  setup.online = b.dataset.players === 'online';
+  if (!setup.online) setup.players = +b.dataset.players;
+  fitMap();
   renderStart();
   startEl.querySelector(`.seg-btn[data-players="${setup.players}"]`).focus();
 }));
 
 export function openStart() {
-  if (!startEl.hidden) return;
+  if (!startEl.hidden || net.online) return;   // online, Leave game takes you back
+  // An invite link: rejoin at once if this tab already has a seat there (a reload), else ask first.
+  if (joinRoom && hasSeat(joinRoom)) { connect({ room: joinRoom, skins: setup.skins }); gameStarted = true; return; }
+  if (joinRoom) appEl.dataset.online = '';   // no local tuning or match controls behind it either
   closePicker();
   if (gameStarted) {
     // Start from what is being played now.
     setup.players = isSolo() ? 1 : 2;
+    setup.online = false;
     setup.map = isPractice() ? 'practice' : (MAPS[level.builtMap] ? level.builtMap : setup.map);
   }
   renderStart();
@@ -142,6 +165,13 @@ function closeStart() {
 }
 function startGame() {
   applySkins(setup.skins);
+  if (joinRoom || setup.online) {
+    try { localStorage.setItem(SETUP_KEY, JSON.stringify(setup)); } catch (e) { /* saving is optional */ }
+    closeStart();
+    connect({ room: joinRoom, map: setup.map, skins: setup.skins });
+    gameStarted = true;
+    return;
+  }
   let mode;
   if (setup.players === 1 && setup.map === 'practice') mode = 'practice';
   else {

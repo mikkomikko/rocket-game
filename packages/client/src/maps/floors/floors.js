@@ -1,20 +1,22 @@
 import * as THREE from 'three';
-import { P } from '@rocket-duel/shared/config.js';
 import { mulberry32 } from '@rocket-duel/shared/math.js';
-import { H, level, repaint, W } from '@rocket-duel/shared/level/mask.js';
+import { level } from '@rocket-duel/shared/level/mask.js';
+import { onSim } from '@rocket-duel/shared/events.js';
+import { BLOCK_HP, FL } from '@rocket-duel/shared/maps/floors.js';
 import { glowMat, LAVA_VS, NOISE_GLSL, scene } from '../../render/scene.js';
-import { SHIP_RADIUS, ships } from '@rocket-duel/shared/ships/ship.js';
-import { addShake, damage, kill } from '@rocket-duel/shared/ships/physics.js';
+import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { EMBER, FIRE, WHITE } from '../../fx/pools.js';
-import { emit } from '../../fx/particles.js';
+import { emit, PT } from '../../fx/particles.js';
+import { DB } from '../../fx/debris.js';
 import { emitSmoke } from '../../fx/smoke.js';
-import { rebuildCave } from '../../game/modes.js';
 
 /* ------------------------------------------------------------------ *
- * Floors: a race up two hallways with lava rising behind you
+ * Floors as drawn: girders, crates, wrecks, asteroids, the finish line and the lava. The race itself
+ * (lava, asteroids, blocks, scoring) runs in @rocket-duel/shared/maps/floors.js; these meshes follow FL.
  * ------------------------------------------------------------------ */
-const BLOCK_HP = 5;
-export const FL = { spec: null, lava: [-60, -60], v: [0, 0], delay: [0, 0], asteroids: [], blocks: [], wrecks: [], halls: [[0, 0], [0, 0]], finish: 1e9, toastTimer: 0 };
+// Meshes by index into FL.blocks and FL.asteroids; wrecks are looks only (their smoke and glow).
+const looks = { blocks: [], asteroids: [], wrecks: [] };
+let toastTimer = 0;
 const FL_GROUP = new THREE.Group();
 scene.add(FL_GROUP);
 export function canvasTex(w, h, draw) {
@@ -86,12 +88,6 @@ void main() { float t = clamp((vW.y - uTop) / 140.0, 0.0, 1.0); float a = (1.0 -
   return { sheet, glow, mat };
 }
 const lavas = [makeLava(), makeLava()];
-export function resetLava(i) {
-  FL.lava[i] = -60;
-  FL.v[i] = P.lavaSpeed;
-  FL.delay[i] = P.lavaDelay;
-}
-
 export function clearFloors() {
   for (const o of [...FL_GROUP.children]) {
     FL_GROUP.remove(o);
@@ -100,20 +96,18 @@ export function clearFloors() {
       if (c.material && !c.material.userData.shared) c.material.dispose();
     });
   }
-  FL.asteroids = []; FL.blocks = []; FL.wrecks = [];
-  FL.finish = 1e9;
+  looks.blocks = []; looks.asteroids = []; looks.wrecks = [];
 }
 export function stripedPlane(w, h, tileW) {
   const g = new THREE.PlaneGeometry(w, h), uv = g.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * w / tileW);
   return g;
 }
+// The meshes for the level just built (after floorsRules.start(), so FL matches level.spec).
 export function buildFloors() {
   clearFloors();
-  const sp = FL.spec;
+  const sp = level.spec;
   if (!sp) return;
-  FL.halls = sp.halls;
-  FL.finish = sp.finish;
   for (const L of sp.ledges) {   // barriers to dodge: steel girders with hazard stripes
     const w = L.x1 - L.x0, h = L.y1 - L.y0;
     const m = new THREE.Mesh(stripedPlane(w, h, 2 * h), girderMat);
@@ -126,7 +120,7 @@ export function buildFloors() {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(b.x1 - b.x0, b.y1 - b.y0), new THREE.MeshBasicMaterial({ map: crateTex }));
     m.position.set((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, 0.35);
     FL_GROUP.add(m);
-    FL.blocks.push({ ...b, hp: BLOCK_HP, flash: 0, mesh: m, alive: true });
+    looks.blocks.push({ mesh: m, flash: 0 });
   }
   for (const w of sp.wrecks) {   // wrecks of other ships, still smouldering
     for (const p of w.pieces) {
@@ -139,7 +133,7 @@ export function buildFloors() {
     const glow = new THREE.Mesh(new THREE.PlaneGeometry(36, 36), glowMat(new THREE.Color('#ff7a2e'), 0.5));
     glow.position.set(w.x, w.y, 0.32);
     FL_GROUP.add(glow);
-    FL.wrecks.push({ x: w.x, y: w.y, top: w.top, glow, t: Math.random() * 0.5 });
+    looks.wrecks.push({ x: w.x, y: w.y, top: w.top, glow, t: Math.random() * 0.5 });
   }
   for (const a of sp.asteroids) {   // asteroids drifting across the hallway
     const R = mulberry32(a.seed), s = new THREE.Shape();
@@ -156,7 +150,7 @@ export function buildFloors() {
     }
     g.position.set(a.x, a.y, 0.5);
     FL_GROUP.add(g);
-    FL.asteroids.push({ ...a, rot: 0, mesh: g });
+    looks.asteroids.push(g);
   }
   for (const [x0, x1] of sp.halls) {   // the finish line
     const m = new THREE.Mesh(stripedPlane(x1 - x0, 14, 56), finishMat);
@@ -164,93 +158,54 @@ export function buildFloors() {
     FL_GROUP.add(m);
   }
 }
-export const bulletHitsRock = (x, y) => FL.asteroids.some((a) => (x - a.x) ** 2 + (y - a.y) ** 2 < a.r * a.r);
-export function hitBreakable(x, y) {
-  for (const b of FL.blocks) {
-    if (!b.alive || x < b.x0 - 3 || x > b.x1 + 3 || y < b.y0 - 3 || y > b.y1 + 3) continue;
-    b.hp -= 1;
-    b.flash = 0.1;
-    if (b.hp <= 0) {
-      b.alive = false;
-      b.mesh.visible = false;
-      const m = level.mask;
-      for (let yy = Math.floor(b.y0); yy < Math.ceil(b.y1); yy++) {
-        const row = (H - 1 - yy) * W;
-        for (let xx = Math.floor(b.x0); xx < Math.ceil(b.x1); xx++) m[row + xx] = 0;
-      }
-      repaint(b.x0 - 3, H - b.y1 - 3, b.x1 + 3, H - b.y0 + 3);
-      for (let i = 0; i < 24; i++) {
-        const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 200;
-        emit(b.x0 + Math.random() * (b.x1 - b.x0), (b.y0 + b.y1) / 2, Math.cos(a) * sp, Math.sin(a) * sp, 0.4 + Math.random() * 0.5, i % 3 ? CRATE_BITS : WHITE, 1, 3 + Math.random() * 4);
-      }
-    }
-    return true;
-  }
-  return false;
-}
 export function showToast(title, text) {
   const el = document.getElementById('mapToast');
   el.querySelector('.toast-name').textContent = title;
   el.querySelector('.toast-desc').textContent = text;
   el.hidden = false;
-  clearTimeout(FL.toastTimer);
-  FL.toastTimer = setTimeout(() => { el.hidden = true; }, 2400);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2400);
 }
-function floorsWin(s) {
-  s.score++;
+
+// What the shared rules report (online, replayed from the server's events).
+onSim('blockHit', (i) => { if (looks.blocks[i]) looks.blocks[i].flash = 0.1; });
+onSim('blockBroken', (i) => {
+  const b = FL.blocks[i];
+  if (!b) return;
+  for (let k = 0; k < 24; k++) {
+    const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 200;
+    emit(b.x0 + Math.random() * (b.x1 - b.x0), (b.y0 + b.y1) / 2, Math.cos(a) * sp, Math.sin(a) * sp, 0.4 + Math.random() * 0.5, k % 3 ? CRATE_BITS : WHITE, 1, 3 + Math.random() * 4);
+  }
+});
+onSim('asteroidHit', (s, x, y) => {
+  for (let j = 0; j < 8; j++) emit(x, y, (Math.random() - 0.5) * 120, (Math.random() - 0.5) * 120, 0.4, j % 2 ? WHITE : EMBER, 0.3);
+});
+onSim('floorsWon', (s) => {
   showToast(`${s.id === 0 ? 'Player 1' : 'Player 2'} reached the top!`, 'Point scored. The next race starts at the bottom.');
-  rebuildCave();
-}
-export function stepFloors(h) {
+  PT.on.fill(0); DB.on.fill(0);   // a fresh start, as a rebuilt map gets
+});
+
+// Per-step looks: embers off the lava, crate hit flashes, wreck smoke.
+export function floorLooks(h) {
   for (let i = 0; i < 2; i++) {
-    const s = ships[i];
-    if (!s.active) continue;
-    if (FL.delay[i] > 0) FL.delay[i] -= h;
-    else { FL.v[i] += P.lavaAccel * h; FL.lava[i] = Math.min(H, FL.lava[i] + FL.v[i] * h); }
-    s.rockCd = Math.max(0, (s.rockCd || 0) - h);
     const [x0, x1] = FL.halls[i];
-    if (FL.lava[i] > 0 && Math.random() < h * 14) {
-      emit(x0 + Math.random() * (x1 - x0), FL.lava[i] + 2, (Math.random() - 0.5) * 30, 60 + Math.random() * 90, 0.6 + Math.random() * 0.6, Math.random() < 0.5 ? FIRE : EMBER, -0.1, 3 + Math.random() * 3);
-    }
-    if (!s.alive) continue;
-    if (s.y - 6 * P.shipSize < FL.lava[i]) { kill(s, 'lava'); continue; }
-    if (s.y > FL.finish) { floorsWin(s); return; }
+    if (!ships[i].active || FL.lava[i] <= 0 || Math.random() >= h * 14) continue;
+    emit(x0 + Math.random() * (x1 - x0), FL.lava[i] + 2, (Math.random() - 0.5) * 30, 60 + Math.random() * 90, 0.6 + Math.random() * 0.6, Math.random() < 0.5 ? FIRE : EMBER, -0.1, 3 + Math.random() * 3);
   }
-  for (const a of FL.asteroids) {
-    const [x0, x1] = FL.halls[a.hall];
-    a.x += a.vx * h;
-    a.rot += a.spin * h;
-    if (a.x - a.r < x0) { a.x = x0 + a.r; a.vx = Math.abs(a.vx); }
-    if (a.x + a.r > x1) { a.x = x1 - a.r; a.vx = -Math.abs(a.vx); }
-    const s = ships[a.hall];
-    if (!s.active || !s.alive) continue;
-    const dx = s.x - a.x, dy = s.y - a.y, d = Math.hypot(dx, dy), R = a.r + SHIP_RADIUS * P.shipSize * 0.8;
-    if (d >= R || d < 1e-6) continue;
-    const nx = dx / d, ny = dy / d;
-    s.x = a.x + nx * R; s.y = a.y + ny * R;
-    const vn = (s.vx - a.vx) * nx + s.vy * ny;
-    if (vn < 0) { s.vx -= 1.6 * vn * nx; s.vy -= 1.6 * vn * ny; }
-    s.landed = false;
-    if (s.rockCd <= 0) {
-      s.rockCd = 0.5;
-      damage(s, 20);
-      addShake(s, 0.6);
-      for (let j = 0; j < 8; j++) emit(s.x - nx * SHIP_RADIUS, s.y - ny * SHIP_RADIUS, (Math.random() - 0.5) * 120, (Math.random() - 0.5) * 120, 0.4, j % 2 ? WHITE : EMBER, 0.3);
-    }
-  }
-  for (const b of FL.blocks) if (b.flash > 0) b.flash -= h;
-  for (const w of FL.wrecks) {
+  for (const b of looks.blocks) if (b.flash > 0) b.flash -= h;
+  for (const w of looks.wrecks) {
     w.t -= h;
     if (w.t <= 0) { w.t = 0.3 + Math.random() * 0.4; emitSmoke(w.x + (Math.random() - 0.5) * 16, w.top + 6, (Math.random() - 0.5) * 10, 12 + Math.random() * 12, 1.8 + Math.random(), 6 + Math.random() * 4); }
   }
 }
-export function drawFloors(now) {
+// alpha: how far between the last two steps (online: snapshots) to draw the lava and asteroids.
+export function drawFloors(now, alpha = 1) {
   const on = level.theme === 'floors';
   for (let i = 0; i < 2; i++) {
     const L = lavas[i], [x0, x1] = FL.halls[i];
     L.sheet.visible = L.glow.visible = on && ships[i].active;
     if (!L.sheet.visible) continue;
-    const top = FL.lava[i], bottom = -40;
+    const top = FL.plava[i] + (FL.lava[i] - FL.plava[i]) * alpha, bottom = -40;
     L.mat.uniforms.uTop.value = top;
     L.mat.uniforms.uTime.value = now / 1000;
     L.sheet.position.set(x0, bottom, 0.9);
@@ -259,11 +214,19 @@ export function drawFloors(now) {
     L.glow.scale.set(x1 - x0, 150, 1);
   }
   if (!on) return;
-  for (const a of FL.asteroids) { a.mesh.position.set(a.x, a.y, 0.5); a.mesh.rotation.z = a.rot; }
-  for (const b of FL.blocks) {
-    if (!b.alive) continue;
-    const k = (0.45 + 0.55 * b.hp / BLOCK_HP) * (b.flash > 0 ? 1.8 : 1);
-    b.mesh.material.color.setRGB(k, k, k);
-  }
-  for (const w of FL.wrecks) w.glow.material.opacity = 0.35 + 0.25 * Math.sin(now / 90 + w.x);
+  FL.asteroids.forEach((a, k) => {
+    const g = looks.asteroids[k];
+    if (!g) return;
+    g.position.set(a.px + (a.x - a.px) * alpha, a.y, 0.5);
+    g.rotation.z = a.prot + (a.rot - a.prot) * alpha;
+  });
+  FL.blocks.forEach((b, k) => {
+    const L = looks.blocks[k];
+    if (!L) return;
+    L.mesh.visible = b.alive;
+    if (!b.alive) return;
+    const v = (0.45 + 0.55 * b.hp / BLOCK_HP) * (L.flash > 0 ? 1.8 : 1);
+    L.mesh.material.color.setRGB(v, v, v);
+  });
+  for (const w of looks.wrecks) w.glow.material.opacity = 0.35 + 0.25 * Math.sin(now / 90 + w.x);
 }

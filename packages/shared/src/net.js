@@ -1,23 +1,39 @@
 import { ships } from './ships/ship.js';
 import { B, MAXB } from './bullets.js';
+import { MAPS } from './level/terrain.js';
+import { RULES } from './maps/index.js';
 
 /* ------------------------------------------------------------------ *
- * The online protocol: JSON messages between the server and its browsers.
+ * The online protocol: JSON messages between the server and its browsers. A browser opens
+ * ws(s)://server/?room=new&map=cave to start a room, or ?room=abc123 to join one (&token=… to take
+ * back its seat after a dropped connection).
  *
  *   server → browser
- *     { t: 'welcome', id, P, carves }   your ship id (0 or 1), the match tuning, every crater so far
+ *     { t: 'welcome', id, P, carves, room, token, seats }
+ *                                       your ship id (0 or 1), the match tuning, every crater so far, the
+ *                                       room's name, a token for reconnecting, and who is in each seat
+ *     { t: 'seats', seats }             who is in each seat changed: 'here', 'away' (reconnecting) or null
  *     { t: 'full' }                     both ships are taken
- *     { t: 'snap', ships, bullets, events, acks }   about 30 times a second; acks[id] is the last
- *                                                    input the server has applied to ship id
+ *     { t: 'replaced' }                 your seat was taken back by a newer connection with your token
+ *     { t: 'noroom' }                   no room by that name (it ended, or the link is wrong)
+ *     { t: 'error', text }              the server can't start a room
+ *     { t: 'snap', ships, bullets, boxes, map, events, acks }   about 30 times a second; acks[id] is
+ *                                       the last input the server has applied to ship id; boxes: supply
+ *                                       boxes; map: the map rules' state (their encode())
  *   browser → server
- *     { t: 'input', seq, list }        one input per simulation step, [turn, thrust, fire], numbered from seq.
- *                                      The server applies them in order, one per step.
- *     { t: 'cycle' }                    switch weapon
+ *     { t: 'input', seq, list }        one input per simulation step, [turn, thrust, fire, cycle], numbered
+ *                                      from seq. The server applies them in order, one per step; cycle (1)
+ *                                      switches weapon at that step, so the browser can predict the switch.
+ *     { t: 'map', action }              a map control (Starship: choose a level, restart): the server
+ *                                       passes it to the map rules' action(ship, action)
  *
  * events is everything that happened since the last snap, in order: [type, ...args] for simulation
  * events (ships travel as { ship: id }), and ['carve', x, y, r] for craters.
  * ------------------------------------------------------------------ */
 export const SNAP_EVERY = 4;   // simulation steps per snapshot (120 Hz / 4 = 30 a second)
+
+// Maps the server can run: plain rock, and themes whose rules live in shared (maps/index.js).
+export const ONLINE_MAPS = Object.keys(MAPS).filter((k) => !MAPS[k].theme || RULES[MAPS[k].theme]);
 
 const SHIP_FIELDS = ['x', 'y', 'vx', 'vy', 'a', 'av', 'thrust', 'hp', 'ammo', 'landed', 'onPad', 'alive', 'active',
   'respawnT', 'invulnT', 'score', 'deathX', 'deathY', 'lastImpact', 'weapon', 'frozenT', 'crossT', 'ballT', 'minigunT',

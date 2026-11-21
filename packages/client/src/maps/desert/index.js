@@ -1,11 +1,12 @@
-import { segDist } from '@rocket-duel/shared/math.js';
-import { emit } from '../../fx/particles.js';
+import { desertRules } from '@rocket-duel/shared/maps/desert.js';
 import { backPlants, clearPlants, frontPlants, plantsAfterCarve } from '../forest/plants.js';
-import { buildDesertPlants, SAND } from './plants.js';
-import { drawWorm, hurtWorm, killWorm, resetWorm, stepWorm, WORM, WORM_R, wormHit } from './worm.js';
+import { buildDesertPlants } from './plants.js';
+import { drawWorm, hideWorm, wormLooks } from './worm.js';
 
-// Dune sea: cacti, bones and the giant sandworm.
+// Dune sea: cacti, bones and the giant sandworm. The worm runs in the shared rules (desertRules); this
+// adds how it looks.
 export const desert = {
+  ...desertRules,
   shader: { desert: 1 },
   material: 'sand',
   ground: [222, 170, 112],
@@ -13,20 +14,11 @@ export const desert = {
   enter() {
     backPlants.visible = frontPlants.visible = true;
     buildDesertPlants();
-    resetWorm();
+    desertRules.start(); hideWorm();
   },
-  leave() { clearPlants(); resetWorm(); },
-  reset() { resetWorm(); },
-  step(h) { stepWorm(h); },
+  leave() { clearPlants(); desertRules.start(); hideWorm(); },
+  reset() { desertRules.start(); hideWorm(); },
+  step(h) { wormLooks(h); },
   draw(now, alpha) { drawWorm(alpha); },
   carved(x, y, r) { plantsAfterCarve(x, y, r); },
-  bulletHit(x, y) {
-    const wh = wormHit(x, y);
-    if (!wh) return false;
-    if (wh === 2) hurtWorm(); else for (let j = 0; j < 5; j++) emit(x, y, (Math.random() - 0.5) * 120, Math.random() * 100, 0.4, SAND, 1, 2 + Math.random() * 3);
-    return true;
-  },
-  beamHit(b, s, len, half) {
-    if (WORM.state === 'fly' && segDist(WORM.hx, WORM.hy, b.ox, b.oy, b.ang, len) < half + WORM_R) killWorm();
-  },
 };

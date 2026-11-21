@@ -1,107 +1,154 @@
+import { createServer } from 'node:http';
+import { randomInt } from 'node:crypto';
+import { createReadStream, statSync } from 'node:fs';
+import { extname, join, normalize, resolve } from 'node:path';
+import { Worker } from 'node:worker_threads';
 import { WebSocketServer } from 'ws';
-import { DEFAULTS, P } from '@rocket-duel/shared/config.js';
-import { clamp } from '@rocket-duel/shared/math.js';
-import { game } from '@rocket-duel/shared/state.js';
-import { onLevel } from '@rocket-duel/shared/level/mask.js';
-import { generateMap } from '@rocket-duel/shared/level/generate.js';
-import { MAPS } from '@rocket-duel/shared/level/terrain.js';
-import { onAnySim } from '@rocket-duel/shared/events.js';
-import { seedRandom } from '@rocket-duel/shared/random.js';
-import { ships } from '@rocket-duel/shared/ships/ship.js';
-import { respawn } from '@rocket-duel/shared/ships/physics.js';
-import { cycleWeapon } from '@rocket-duel/shared/ships/weapons.js';
-import { B, clearBullets } from '@rocket-duel/shared/bullets.js';
-import { stepSim } from '@rocket-duel/shared/sim.js';
-import { encodeArgs, encodeBullets, encodeShips, SNAP_EVERY } from '@rocket-duel/shared/net.js';
+import { ONLINE_MAPS } from '@rocket-duel/shared/net.js';
 
-const MAX_QUEUE = 240;  // inputs a player may be ahead of the server (2 s); older ones are dropped
-const CATCH_UP = 4;     // with more than this many waiting, a ship plays two inputs a step until it catches up
+const ROOM_URL = new URL('./room.js', import.meta.url);
+const ROOM_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';   // no 0/o or 1/l/i, so a link read aloud still works
+const MAX_MESSAGE = 64 * 1024;
 
-// Maps without a theme of their own (no creatures or enemies): the ones the server can run so far.
-export const ONLINE_MAPS = Object.keys(MAPS).filter((k) => !MAPS[k].theme);
-
-/* One duel for up to two players. The server owns the match: it runs the simulation from the players'
- * inputs and sends every browser what happened. The process holds one match, since the shared
- * simulation keeps its state in modules. */
-// lag (ms) delays every message each way, to try the game as if over a slow connection.
-export function startServer({ port = 8787, map = 'cave', seed = 7, lag = 0 } = {}) {
+/* The game server: many rooms, one match in each. A browser connects to
+ *   /?room=new&map=cave        to start a room (the welcome tells it the room's name, for the invite link)
+ *   /?room=abc123              to join one (add &token=… to take back your seat after a dropped connection)
+ * Each room runs its match in a worker thread (match.js), since the shared simulation's state lives in
+ * modules. This thread only passes messages between the browsers and the rooms.
+ *
+ * Also: GET /health for the host's health check, and with staticDir it serves the built browser game.
+ * seed: every room's map seed (tests), else a new one per room. origins: the pages allowed to connect (their Origin header), or empty for any. lag (ms): delays every
+ * message each way, to try the game as if over a slow connection. */
+export function startServer({ port = 8787, lag = 0, seed = null, pingEvery = 15, origins = [], staticDir = null, maxRooms = 200, idleClose = 60, log = () => {} } = {}) {
   const later = (fn) => (lag > 0 ? setTimeout(fn, lag / 2) : fn());
-  if (!ONLINE_MAPS.includes(map)) throw new Error(`Online play supports these maps: ${ONLINE_MAPS.join(', ')}`);
-  Object.assign(P, structuredClone(DEFAULTS), { map, seed });
-  game.mode = 'duel'; game.time = 0; game.matchClock = 0;
-  generateMap();
-  clearBullets();
-  seedRandom(seed);
-  for (const s of ships) { s.active = false; s.alive = false; s.score = 0; s.bigLaser = 1; s.beam = null; }
+  const rooms = new Map();   // name → { worker, conns: Map(cid → ws), idleTimer }
+  let nextCid = 1;
 
-  const carves = [];   // every crater so far, so a player who joins late sees the same cave
-  let events = [];
-  onLevel('carved', (x, y, r) => { carves.push([x, y, r]); events.push(['carve', x, y, r]); });
-  onAnySim((type, args) => {
-    // A bullet's last position travels with its end, so the browser can finish the trail where it stopped.
-    if (type === 'bulletEnd') events.push(['bulletEnd', args[0], B.x[args[0]], B.y[args[0]]]);
-    else events.push([type, ...encodeArgs(args)]);
-  });
-
-  const seats = [null, null];   // { ws, queue, ack } per ship: inputs waiting to be applied, last one applied
-  const wss = new WebSocketServer({ port });
-  wss.on('connection', (ws) => {
-    const id = seats.indexOf(null);
-    if (id < 0) { ws.send(JSON.stringify({ t: 'full' })); ws.close(); return; }
-    const seat = { ws, queue: [], ack: 0 };
-    seats[id] = seat;
-    const s = ships[id];
-    s.input = { turn: 0, thrust: 0, fire: false };
-    s.score = 0;
-    respawn(s);
-    const welcome = JSON.stringify({ t: 'welcome', id, P, carves });
-    later(() => ws.send(welcome));
-    ws.on('message', (data) => later(() => {
-      let m;
-      try { m = JSON.parse(data); } catch { return; }
-      if (m.t === 'input' && Array.isArray(m.list)) {
-        m.list.forEach(([turn, thrust, fire], k) => seat.queue.push([m.seq + k, { turn: clamp(+turn || 0, -1, 1), thrust: clamp(+thrust || 0, 0, 1), fire: !!fire }]));
-        // A player far ahead (a stalled server, a fast clock) skips the oldest inputs instead of falling behind.
-        if (seat.queue.length > MAX_QUEUE) seat.ack = seat.queue.splice(0, seat.queue.length - MAX_QUEUE).at(-1)[0];
+  function newRoomName() {
+    for (;;) {
+      const name = Array.from({ length: 6 }, () => ROOM_CHARS[randomInt(ROOM_CHARS.length)]).join('');
+      if (!rooms.has(name)) return name;
+    }
+  }
+  function openRoom(map) {
+    const name = newRoomName();
+    const worker = new Worker(ROOM_URL, { workerData: { map, seed: seed ?? randomInt(1, 1e6), room: name } });
+    const room = { name, worker, conns: new Map(), idleTimer: null };
+    rooms.set(name, room);
+    worker.on('message', (m) => {
+      if (m.k === 'send') {
+        for (const cid of m.to) {
+          const ws = room.conns.get(cid);
+          if (ws) later(() => { if (ws.readyState === ws.OPEN) ws.send(m.data); });
+        }
+      } else if (m.k === 'close') {
+        const ws = room.conns.get(m.cid);
+        room.conns.delete(m.cid);
+        if (ws) later(() => ws.close());
+      } else if (m.k === 'idle') {
+        // No one is playing and no seat is held: the room closes unless someone joins soon.
+        clearTimeout(room.idleTimer);
+        if (m.idle) room.idleTimer = setTimeout(() => closeRoom(room), idleClose * 1000);
       }
-      else if (m.t === 'cycle') cycleWeapon(s);
-    }));
-    ws.on('close', () => {
-      seats[id] = null;
-      s.active = false; s.alive = false; s.beam = null;
-      s.input = { turn: 0, thrust: 0, fire: false };
     });
-  });
-
-  // A ship moves one step per input its player sent, so the server's ship takes the same steps as the
-  // player's own prediction. No input yet: it waits. A backlog: two a step until it is caught up.
-  function inputsFor(s) {
-    const seat = seats[s.id];
-    if (!seat) return [];
-    const list = seat.queue.splice(0, seat.queue.length > CATCH_UP ? 2 : 1);
-    if (list.length) seat.ack = list.at(-1)[0];
-    return list;
+    worker.on('error', (e) => { log(`room ${name} failed: ${e.stack || e}`); closeRoom(room); });
+    log(`room ${name} opened (${map}), ${rooms.size} open`);
+    return room;
+  }
+  function closeRoom(room) {
+    if (rooms.get(room.name) !== room) return;
+    rooms.delete(room.name);
+    clearTimeout(room.idleTimer);
+    for (const ws of room.conns.values()) ws.close();
+    room.worker.terminate();
+    log(`room ${room.name} closed, ${rooms.size} open`);
   }
 
-  const h = 1 / P.physicsHz;
-  let last = performance.now(), acc = 0, steps = 0;
-  const timer = setInterval(() => {
-    const now = performance.now();
-    acc += Math.min(0.25, (now - last) / 1000);
-    last = now;
-    while (acc >= h) {
-      stepSim(h, inputsFor);
-      acc -= h;
-      if (++steps % SNAP_EVERY === 0) {
-        const msg = JSON.stringify({ t: 'snap', ships: encodeShips(), bullets: encodeBullets(), events, acks: seats.map((st) => st?.ack ?? 0) });
-        events = [];
-        for (const seat of seats) if (seat) later(() => { if (seat.ws.readyState === seat.ws.OPEN) seat.ws.send(msg); });
-      }
+  const http = createServer((req, res) => {
+    const url = new URL(req.url, 'http://x');
+    if (url.pathname === '/health') {
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, rooms: rooms.size }));
+      return;
     }
-  }, 2);
+    if (staticDir && (req.method === 'GET' || req.method === 'HEAD')) { serveStatic(staticDir, url.pathname, req, res); return; }
+    res.writeHead(404, { 'content-type': 'text/plain' });
+    res.end('Rocket duel game server\n');
+  });
 
+  const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE });
+  http.on('upgrade', (req, socket, head) => {
+    const origin = req.headers.origin;
+    if (origins.length && !origins.includes(origin)) {
+      log(`refused a connection from ${origin}`);
+      socket.end('HTTP/1.1 403 Forbidden\r\n\r\n');
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => { wss.emit('connection', ws); connected(ws, new URL(req.url, 'http://x').searchParams); });
+  });
+
+  function connected(ws, q) {
+    const reply = (m) => later(() => { ws.send(JSON.stringify(m)); ws.close(); });
+    let room;
+    if (q.get('room') === 'new') {
+      const map = q.get('map') || 'cave';
+      if (!ONLINE_MAPS.includes(map)) return reply({ t: 'error', text: `Online play doesn't have that map yet.` });
+      if (rooms.size >= maxRooms) return reply({ t: 'error', text: 'The server is full right now. Try again in a while.' });
+      room = openRoom(map);
+    } else {
+      room = rooms.get(q.get('room') || '');
+      if (!room) return reply({ t: 'noroom' });
+    }
+    const cid = nextCid++;
+    room.conns.set(cid, ws);
+    room.worker.postMessage({ k: 'join', cid, token: q.get('token') || null });
+    ws.on('message', (data) => later(() => { if (room.conns.has(cid)) room.worker.postMessage({ k: 'msg', cid, data: String(data) }); }));
+    ws.on('close', () => later(() => { if (room.conns.delete(cid)) room.worker.postMessage({ k: 'leave', cid }); }));
+  }
+
+  // A dead connection (a laptop lid shut, a phone in a tunnel) is noticed by its missing pongs.
+  const alive = new WeakSet();
+  wss.on('connection', (ws) => { alive.add(ws); ws.on('pong', () => alive.add(ws)); });
+  const pinger = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (!alive.has(ws)) { ws.terminate(); continue; }
+      alive.delete(ws);
+      ws.ping();
+    }
+  }, pingEvery * 1000);
+
+  http.listen(port);
   return {
-    port: () => wss.address().port,
-    close: () => new Promise((resolve) => { clearInterval(timer); for (const seat of seats) seat?.ws.terminate(); wss.close(() => resolve()); }),
+    port: () => http.address().port,
+    rooms: () => [...rooms.keys()],
+    close: () => new Promise((done) => {
+      clearInterval(pinger);
+      for (const room of [...rooms.values()]) closeRoom(room);
+      for (const ws of wss.clients) ws.terminate();
+      wss.close();
+      http.close(() => done());
+    }),
   };
+}
+
+const TYPES = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain',
+};
+// The built browser game. Unknown paths get index.html; Vite's hashed assets can be cached for good.
+function serveStatic(dir, pathname, req, res) {
+  const root = resolve(dir);
+  let file = join(root, normalize(decodeURIComponent(pathname)));
+  if (!file.startsWith(root)) { res.writeHead(403); res.end(); return; }
+  let st;
+  try { st = statSync(file); if (st.isDirectory()) { file = join(file, 'index.html'); st = statSync(file); } } catch { st = null; }
+  if (!st) { file = join(root, 'index.html'); try { st = statSync(file); } catch { res.writeHead(404); res.end(); return; } }
+  const immutable = pathname.startsWith('/assets/');
+  res.writeHead(200, {
+    'content-type': TYPES[extname(file)] || 'application/octet-stream',
+    'content-length': st.size,
+    'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
+  });
+  if (req.method === 'HEAD') { res.end(); return; }
+  createReadStream(file).pipe(res);
 }

@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import { MINIGUN_TIME, P } from '@rocket-duel/shared/config.js';
-import { H, level, W } from '@rocket-duel/shared/level/mask.js';
+import { level } from '@rocket-duel/shared/level/mask.js';
+import { onSim } from '@rocket-duel/shared/events.js';
+import { PU } from '@rocket-duel/shared/maps/forest.js';
 import { glowMat, scene } from '../../render/scene.js';
 import { shapeGeo, views } from '../../ships/view.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { WHITE } from '../../fx/pools.js';
 import { emit } from '../../fx/particles.js';
-import { topBelow } from './plants.js';
 import { showToast } from '../floors/floors.js';
 
-// The minigun pickup: floats on the middle island. Fly into it for 30 s of very fast fire.
-const MINIGUN_BACK = 20;
-const PU = { active: false, x: 0, y: 0, respawn: 0 };
+// The minigun pickup as drawn (it runs in @rocket-duel/shared/maps/forest.js): a glowing gun on the
+// middle island, and three little barrels on the nose of a ship that has it.
+const puParts = {};
 const puGroup = new THREE.Group();
 puGroup.visible = false;
 scene.add(puGroup);
@@ -37,8 +37,8 @@ scene.add(puGroup);
   glow.position.z = -0.02;
   ring.position.z = -0.01;
   puGroup.add(glow, ring, gun);
-  PU.ring = ring;
-  PU.gun = gun;
+  puParts.ring = ring;
+  puParts.gun = gun;
 }
 // Three little barrels on a ship's nose while it has the minigun.
 for (const s of ships) {
@@ -53,39 +53,20 @@ for (const s of ships) {
   views[s.id].gunMesh = g;
 }
 const PU_SPARK = new THREE.Color('#ffe066');
-export function resetPickup() {
-  PU.active = level.theme === 'forest';
-  PU.respawn = 0;
-  if (PU.active) { PU.x = W / 2; PU.y = topBelow(W / 2, H - 60) + 22; }
-}
-export function stepPickup(h) {
-  if (!PU.active) {
-    if (PU.respawn > 0) {
-      PU.respawn -= h;
-      if (PU.respawn <= 0) {
-        PU.active = true;
-        for (let i = 0; i < 20; i++) { const a = Math.random() * Math.PI * 2; emit(PU.x, PU.y, Math.cos(a) * 90, Math.sin(a) * 90, 0.5, PU_SPARK, 0, 4); }
-      }
-    }
-    return;
-  }
-  for (const s of ships) {
-    if (!s.active || !s.alive || Math.hypot(s.x - PU.x, s.y - PU.y) > 26 * Math.max(1, P.shipSize)) continue;
-    s.minigunT = MINIGUN_TIME;
-    PU.active = false;
-    PU.respawn = MINIGUN_BACK;
-    for (let i = 0; i < 36; i++) { const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 160; emit(PU.x, PU.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.4 + Math.random() * 0.4, i % 2 ? PU_SPARK : WHITE, 0, 3 + Math.random() * 4); }
-    showToast(`${s.id === 0 ? 'Player 1' : 'Player 2'} got the minigun!`, '30 seconds of super-fast shooting.');
-    break;
-  }
-}
+onSim('minigunBack', () => {
+  for (let i = 0; i < 20; i++) { const a = Math.random() * Math.PI * 2; emit(PU.x, PU.y, Math.cos(a) * 90, Math.sin(a) * 90, 0.5, PU_SPARK, 0, 4); }
+});
+onSim('minigunTaken', (s) => {
+  for (let i = 0; i < 36; i++) { const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 160; emit(PU.x, PU.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.4 + Math.random() * 0.4, i % 2 ? PU_SPARK : WHITE, 0, 3 + Math.random() * 4); }
+  showToast(`${s.id === 0 ? 'Player 1' : 'Player 2'} got the minigun!`, '30 seconds of super-fast shooting.');
+});
 export function drawPickup(now) {
   puGroup.visible = PU.active && level.theme === 'forest';
   if (puGroup.visible) {
     puGroup.position.set(PU.x, PU.y + Math.sin(now / 400) * 3, 1.2);
-    PU.ring.rotation.z = now / 500;
-    PU.ring.material.opacity = 0.55 + 0.3 * Math.sin(now / 200);
-    PU.gun.rotation.z = Math.sin(now / 700) * 0.15;
+    puParts.ring.rotation.z = now / 500;
+    puParts.ring.material.opacity = 0.55 + 0.3 * Math.sin(now / 200);
+    puParts.gun.rotation.z = Math.sin(now / 700) * 0.15;
   }
   for (const s of ships) views[s.id].gunMesh.visible = s.alive && s.minigunT > 0;
 }

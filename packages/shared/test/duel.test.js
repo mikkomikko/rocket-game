@@ -10,18 +10,25 @@ import { damage, moveShip, respawn } from '../src/ships/physics.js';
 import { cycleWeapon, fire } from '../src/ships/weapons.js';
 import { B, clearBullets, MAXB, onPredictedShot } from '../src/bullets.js';
 import { stepSim } from '../src/sim.js';
+import { boxes, resetBoxes } from '../src/boxes.js';
+import { mapRules, setMapRules } from '../src/maps.js';
+import { rulesFor } from '../src/maps/index.js';
+import { DINO, dinoMouth, PU } from '../src/maps/forest.js';
 
 const H = 1 / 120;
 const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) h = Math.imul(h ^ a[i], 16777619); return (h >>> 0).toString(16); };
+setMapRules(() => rulesFor(level.theme));   // as the server does: the shared map rules
 const counts = {};
-for (const type of ['fired', 'explosion', 'killed', 'respawned', 'weaponChanged', 'blast']) onSim(type, () => { counts[type] = (counts[type] || 0) + 1; });
+for (const type of ['dinoAte', 'dinoKilled', 'minigunTaken', 'boxTaken', 'fired', 'explosion', 'killed', 'respawned', 'weaponChanged', 'blast']) onSim(type, () => { counts[type] = (counts[type] || 0) + 1; });
 
 function newMatch(map = 'cave', seed = 1) {
   Object.assign(P, structuredClone(DEFAULTS), { map });
   game.mode = 'duel'; game.time = 0; game.matchClock = 0;
   generateMap();
+  mapRules().start?.();
   clearBullets();
   seedRandom(seed);
+  resetBoxes();
   for (const s of ships) {
     s.score = 0; s.weapon = 0; s.bigLaser = 1; s.beam = null;
     s.input = { turn: 0, thrust: 0, fire: false };
@@ -85,6 +92,18 @@ describe('the duel runs without a browser', () => {
     expect(B.on.every((v) => v === 0)).toBe(true);
   });
 
+  it('switches weapon at the step whose input carries the switch', () => {
+    const s = ships[0];
+    const feed = (inp) => stepSim(H, (x) => (x === s ? [[1, { turn: 0, thrust: 0, fire: false, ...inp }]] : []));
+    feed({});
+    expect(s.weapon).toBe(0);
+    feed({ cycle: true });
+    expect(s.weapon).toBe(1);
+    expect(counts.weaponChanged).toBe(1);
+    feed({});
+    expect(s.weapon).toBe(1);
+  });
+
   it('predicts a ship exactly by replaying its inputs from a snapshot', () => {
     newMatch('open', 3);
     const s = ships[0];
@@ -138,5 +157,47 @@ describe('the duel runs without a browser', () => {
       });
     };
     expect(play()).toBe(play());
+  });
+
+  it('hands out supply boxes and brings them back later', () => {
+    expect(boxes.length).toBeGreaterThan(0);
+    const s = ships[0], b = boxes.find((x) => x.kind === 'ammo');
+    s.ammo = 5;
+    s.x = b.x; s.y = b.y; s.landed = false;
+    stepSim(H);
+    expect(counts.boxTaken).toBe(1);
+    expect(s.ammo).toBe(P.ammoMax);
+    expect(b.on).toBe(false);
+    run(13);   // an ammo box is back after 12 s
+    expect(b.on).toBe(true);
+  });
+
+  it('runs the Forest dino: it eats a ship in its way and dies to one shot', () => {
+    newMatch('forest');
+    for (const s of ships) s.input = { turn: 0, thrust: 0, fire: false };
+    run(4.6);   // the first run starts 4 s in
+    expect(DINO.active).toBe(true);
+    const s = ships[0], m = dinoMouth();
+    s.invulnT = 0; s.landed = false;
+    s.x = m.zx + DINO.dir * 4; s.y = m.y; s.vx = s.vy = 0;
+    stepSim(H);
+    expect(counts.dinoAte).toBe(1);
+    expect(s.alive).toBe(false);
+    expect(s.eaten).toBe(true);
+    expect(ships[1].score).toBe(1);
+    expect(mapRules().bulletHit(DINO.x, DINO.y + 30, 1, 8, 0)).toBe(true);
+    expect(counts.dinoKilled).toBe(1);
+    expect(DINO.active).toBe(false);
+  });
+
+  it('gives the Forest minigun to the ship that flies into it', () => {
+    newMatch('forest');
+    expect(PU.active).toBe(true);
+    const s = ships[1];
+    s.x = PU.x; s.y = PU.y; s.landed = false;
+    stepSim(H);
+    expect(counts.minigunTaken).toBe(1);
+    expect(s.minigunT).toBeGreaterThan(29);
+    expect(PU.active).toBe(false);
   });
 });

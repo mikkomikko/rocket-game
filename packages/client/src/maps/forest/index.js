@@ -1,10 +1,12 @@
-import { segDist } from '@rocket-duel/shared/math.js';
+import { forestRules } from '@rocket-duel/shared/maps/forest.js';
 import { backPlants, buildPlants, clearPlants, frontPlants, plantsAfterCarve } from './plants.js';
-import { DINO, DINO_S, dinoHit, drawDino, killDino, resetDino, stepDino } from './dino.js';
-import { drawPickup, resetPickup, stepPickup } from './pickup.js';
+import { dinoLooks, drawDino, resetDinoLooks } from './dino.js';
+import { drawPickup } from './pickup.js';
 
-// Forest planet: Jurassic plants, the dinosaur and the minigun pickup.
+// Forest planet: Jurassic plants, the dinosaur and the minigun pickup. The dino and the pickup run in
+// the shared rules (forestRules); this adds how they look.
 export const forest = {
+  ...forestRules,
   shader: { forest: 1 },
   material: 'soil',
   ground: [104, 84, 56],
@@ -12,19 +14,11 @@ export const forest = {
   enter() {
     backPlants.visible = frontPlants.visible = true;
     buildPlants();
-    resetDino(); resetPickup();
+    forestRules.start(); resetDinoLooks();
   },
-  leave() { clearPlants(); resetDino(); resetPickup(); },
-  reset() { resetDino(); resetPickup(); },
-  step(h) { stepDino(h); stepPickup(h); },
+  leave() { clearPlants(); forestRules.start(); resetDinoLooks(); },
+  reset() { forestRules.start(); resetDinoLooks(); },
+  step(h) { dinoLooks(h); },
   draw(now, alpha) { drawDino(alpha); drawPickup(now); },
   carved(x, y, r) { plantsAfterCarve(x, y, r); },
-  bulletHit(x, y) {
-    if (!dinoHit(x, y)) return false;
-    killDino();
-    return true;
-  },
-  beamHit(b, s, len, half) {
-    if (DINO.active && segDist(DINO.x, DINO.y + 36 * DINO_S, b.ox, b.oy, b.ang, len) < half + 40 * DINO_S) killDino();
-  },
 };

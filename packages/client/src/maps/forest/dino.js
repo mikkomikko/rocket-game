@@ -1,18 +1,16 @@
 import * as THREE from 'three';
 import { P } from '@rocket-duel/shared/config.js';
-import { approach, clamp } from '@rocket-duel/shared/math.js';
-import { level, solidAt, W } from '@rocket-duel/shared/level/mask.js';
+import { onSim } from '@rocket-duel/shared/events.js';
+import { DINO, DINO_S, dinoMouth } from '@rocket-duel/shared/maps/forest.js';
 import { scene } from '../../render/scene.js';
 import { shapeGeo, views } from '../../ships/view.js';
-import { SHIP_RADIUS, ships } from '@rocket-duel/shared/ships/ship.js';
-import { addShake, kill } from '@rocket-duel/shared/ships/physics.js';
 import { DUST, WHITE } from '../../fx/pools.js';
 import { emit } from '../../fx/particles.js';
 import { emitSmoke } from '../../fx/smoke.js';
 import { groundRGB } from '../index.js';
 
-// The dinosaur: a small cyan T-rex with black eyes, built from flat shapes. Faces +x; feet at y = 0.
-export const DINO_S = 0.85, DINO_SPEED = 330, DINO_EVERY = 10;
+// The dinosaur as drawn: a small T-rex built from flat shapes, a new colour each run. Faces +x; feet at y = 0.
+// It runs in @rocket-duel/shared/maps/forest.js.
 const dinoMats = {};
 for (const [k, hex] of Object.entries({ body: '#2fe6f0', far: '#1aa3b4', stripe: '#1cb8c8', mouth: '#0b3640', eye: '#000000', tooth: '#f4fbff' })) {
   dinoMats[k] = new THREE.MeshBasicMaterial({ color: hex, transparent: true, side: THREE.DoubleSide });
@@ -96,29 +94,6 @@ dinoHat.add(hatGills, hatCap);
 for (const [x, y, r] of [[-6, 4, 1.8], [0, 7.5, 2.2], [6, 3.5, 1.9], [-1.5, 2.2, 1.1], [9.5, 1.3, 1]]) dinoHat.add(dMesh(new THREE.CircleGeometry(r, 10), 'dot', x, y, 0.003));
 dinoHead.add(dinoHat);
 
-export const DINO = { active: false, x: 0, y: 0, px: 0, py: 0, dir: -1, next: 4, phase: 0, open: 0.1, chew: 0, burp: 0, alpha: 0 };
-export function resetDino() {
-  DINO.active = false; DINO.next = 4; DINO.chew = 0; DINO.burp = 0;
-  dinoRoot.visible = false;
-  dinoCount = 0;
-}
-function groundUnder(x, y) {
-  if (solidAt(x, y)) { for (let k = 0; k < 120 && solidAt(x, y); k++) y += 1; return y; }
-  for (let k = 0; k < 900 && y > 0 && !solidAt(x, y - 1); k++) y -= 1;
-  return y;
-}
-const dinoMouth = () => ({ x: DINO.x + DINO.dir * 46 * DINO_S, zx: DINO.x + DINO.dir * 54 * DINO_S, y: DINO.y + 53 * DINO_S });
-function eatShip(s, m) {
-  for (let i = 0; i < 26; i++) {
-    const a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 160;
-    emit(m.zx, m.y, Math.cos(a) * sp, Math.sin(a) * sp, 0.3 + Math.random() * 0.5, i % 3 ? views[s.id].color : WHITE, 0.4, 2 + Math.random() * 4);
-  }
-  kill(s, true);
-  addShake(s, 1.4);
-  DINO.open = 0; DINO.chew = 0.7; DINO.burp = 0.9;
-}
-// One shot kills the dino: is the point (x, y) inside its body?
-const DINO_COL = new THREE.Color('#2fe6f0');
 // Each run the dino gets a new color: [body, far side, stripes, eye].
 const DINO_PALETTES = [
   ['#ff4a4a', '#c22a2a', '#a51d1d', '#000000'],   // red
@@ -132,85 +107,49 @@ const DINO_PALETTES = [
   ['#ff9a2e', '#c96a14', '#d4761c', '#000000'],   // orange
 ];
 const RARE_PAL = ['#d8342c', '#9e2420', '#d8342c', '#000000'];   // mushroom red, stripes hidden under the dots
-let dinoPal = 1, dinoCount = 0;
+let shownRun = -1;
 function recolorDino() {
-  dinoCount++;
-  const rare = dinoCount % 5 === 0;
-  dinoShroom.visible = dinoHat.visible = rare;
-  if (!rare) {
-    let k = Math.floor(Math.random() * (DINO_PALETTES.length - 1));
-    if (k >= dinoPal) k++;   // never the same color twice in a row
-    dinoPal = k;
-  }
-  const [body, far, stripe, eye] = rare ? RARE_PAL : DINO_PALETTES[dinoPal];
+  shownRun = DINO.run;
+  dinoShroom.visible = dinoHat.visible = DINO.rare;
+  const [body, far, stripe, eye] = DINO.rare ? RARE_PAL : DINO_PALETTES[DINO.pal];
   dinoMats.body.color.set(body); dinoMats.far.color.set(far);
   dinoMats.stripe.color.set(stripe); dinoMats.eye.color.set(eye);
   DINO_COL.set(body);
 }
-export function dinoHit(x, y) {
-  if (level.theme !== 'forest' || !DINO.active || DINO.alpha < 0.3) return false;
-  const lx = (x - DINO.x) * DINO.dir / DINO_S, ly = (y - DINO.y) / DINO_S;
-  return lx > -52 && lx < 48 && ly > -2 && ly < 76;
-}
-export function killDino() {
-  const cx = DINO.x - DINO.dir * 4 * DINO_S, cy = DINO.y + 36 * DINO_S;
+const DINO_COL = new THREE.Color('#2fe6f0');
+
+// What the simulation reports (@rocket-duel/shared/maps/forest.js): bites, burps and the dino bursting.
+let burp = 0;
+onSim('dinoAte', (s, x, y) => {
+  for (let i = 0; i < 26; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 160;
+    emit(x, y, Math.cos(a) * sp, Math.sin(a) * sp, 0.3 + Math.random() * 0.5, i % 3 ? views[s.id].color : WHITE, 0.4, 2 + Math.random() * 4);
+  }
+  burp = 0.9;
+});
+onSim('dinoKilled', (cx, cy) => {
   for (let i = 0; i < 46; i++) {
     const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 220;
     emit(cx + (Math.random() - 0.5) * 50 * DINO_S, cy + (Math.random() - 0.5) * 40 * DINO_S, Math.cos(a) * sp, Math.sin(a) * sp + 60, 0.5 + Math.random() * 0.6, i % 3 ? DINO_COL : WHITE, 0.6, 3 + Math.random() * 4);
   }
   emit(cx, cy, 0, 0, 0.2, WHITE, 0, 60);
   if (P.smoke) for (let i = 0; i < 8; i++) emitSmoke(cx, cy, (Math.random() - 0.5) * 60, 20 + Math.random() * 40, 1.2 + Math.random(), 8 + Math.random() * 6);
-  for (const s of ships) if (s.active) addShake(s, 0.5);
-  DINO.active = false; DINO.chew = 0; DINO.burp = 0;
-  dinoRoot.visible = false;
-}
-export function stepDino(h) {
-  // A new run starts every DINO_EVERY seconds, alternating left and right.
-  DINO.next -= h;
-  if (DINO.next <= 0) {
-    DINO.next += DINO_EVERY;
-    DINO.dir = -DINO.dir;
-    DINO.x = DINO.dir > 0 ? 24 : W - 24;
-    DINO.y = groundUnder(DINO.x, 420);
-    DINO.px = DINO.x; DINO.py = DINO.y;
-    DINO.phase = 0; DINO.open = 0.1; DINO.chew = 0; DINO.alpha = 0;
-    DINO.active = true;
-    recolorDino();
-  }
-  if (DINO.burp > 0) {
-    DINO.burp -= h;
-    if (DINO.burp <= 0 && DINO.active) {
+  burp = 0;
+});
+export function resetDinoLooks() { burp = 0; shownRun = -1; dinoRoot.visible = false; }
+// Looks each step while the dino runs: dust from its feet, and a puff of smoke a moment after a meal.
+export function dinoLooks(h) {
+  if (burp > 0) {
+    burp -= h;
+    if (burp <= 0 && DINO.active) {
       const m = dinoMouth();
       for (let i = 0; i < 6; i++) emitSmoke(m.zx, m.y, DINO.dir * (20 + Math.random() * 30), 10 + Math.random() * 20, 1.6 + Math.random(), 6 + Math.random() * 5);
     }
   }
-  if (!DINO.active) return;
-  DINO.px = DINO.x; DINO.py = DINO.y;
-  DINO.x += DINO.dir * DINO_SPEED * h;
-  DINO.phase += h * 15;
-  const target = groundUnder(DINO.x, DINO.y + 24);
-  DINO.y += (target - DINO.y) * Math.min(1, h * 25);
-  const fromWall = DINO.dir > 0 ? DINO.x - 16 : W - 16 - DINO.x;
-  const toWall = DINO.dir > 0 ? W - 16 - DINO.x : DINO.x - 16;
-  DINO.alpha = clamp(Math.min(fromWall, toWall) / 60, 0, 1);
-  if (toWall <= 0) { DINO.active = false; return; }
-  if (Math.random() < h * 18) {
-    const g = groundRGB(DINO.y);
-    DUST.setRGB(g[0] / 255 * 1.6, g[1] / 255 * 1.6, g[2] / 255 * 1.6, THREE.SRGBColorSpace);
-    emit(DINO.x - DINO.dir * 8, DINO.y + 2, -DINO.dir * (30 + Math.random() * 50), 20 + Math.random() * 40, 0.4 + Math.random() * 0.3, DUST, 1, 3 + Math.random() * 3);
-  }
-  // Jaws open wide when a rocket is ahead; anything right in front of the mouth gets eaten.
-  const m = dinoMouth();
-  let threat = false;
-  for (const s of ships) {
-    if (!s.active || !s.alive) continue;
-    const ahead = (s.x - m.x) * DINO.dir;
-    if (ahead > -12 && ahead < 170 && Math.abs(s.y - m.y) < 80) threat = true;
-    const R = 16 * DINO_S + SHIP_RADIUS * P.shipSize * 0.8;
-    if (DINO.alpha > 0.5 && (s.x - m.zx) ** 2 + (s.y - m.y) ** 2 < R * R) eatShip(s, m);
-  }
-  if (DINO.chew > 0) { DINO.chew -= h; DINO.open = 0.12 * Math.abs(Math.sin(DINO.chew * 28)); }
-  else DINO.open = approach(DINO.open, threat ? 0.75 : 0.1 + 0.06 * Math.sin(DINO.phase * 0.5), h * 6);
+  if (!DINO.active || Math.random() >= h * 18) return;
+  const g = groundRGB(DINO.y);
+  DUST.setRGB(g[0] / 255 * 1.6, g[1] / 255 * 1.6, g[2] / 255 * 1.6, THREE.SRGBColorSpace);
+  emit(DINO.x - DINO.dir * 8, DINO.y + 2, -DINO.dir * (30 + Math.random() * 50), 20 + Math.random() * 40, 0.4 + Math.random() * 0.3, DUST, 1, 3 + Math.random() * 3);
 }
 
 function poseDinoLeg(L, ph) {
@@ -222,9 +161,10 @@ function poseDinoLeg(L, ph) {
 export function drawDino(a) {
   dinoRoot.visible = DINO.active;
   if (!DINO.active) return;
+  if (shownRun !== DINO.run) recolorDino();
   dinoRoot.position.set(DINO.px + (DINO.x - DINO.px) * a, DINO.py + (DINO.y - DINO.py) * a, 0.95);
   dinoRoot.scale.set(DINO.dir * DINO_S, DINO_S, 1);
-  const ph = DINO.phase;
+  const ph = DINO.pphase + (DINO.phase - DINO.pphase) * a;
   poseDinoLeg(dinoLegs[1], ph);
   poseDinoLeg(dinoLegs[0], ph + Math.PI);
   dinoRig.position.y = Math.abs(Math.sin(ph)) * 2 - 1;

@@ -10,7 +10,7 @@ import { pointScale } from './fx/pools.js';
 import { stepTerrainBits } from './fx/debris.js';
 import { stepParticles } from './fx/particles.js';
 import { stepSmoke } from './fx/smoke.js';
-import { drawBoxes, stepBoxes } from './systems/boxes.js';
+import { drawBoxes } from './systems/boxes.js';
 import { drawBigLasers } from './render/bigLaser.js';
 import { keysDown, padsSeen, prettyKey, readInputs } from './input.js';
 import { cams, updateCamera, viewRects } from './render/camera.js';
@@ -22,7 +22,7 @@ import { activeMap, allMaps } from './maps/index.js';
 import { stepEffects } from './fx/effects.js';
 import { views } from './ships/view.js';
 import { stepSim } from '@rocket-duel/shared/sim.js';
-import { drawPos, easeCorrections, net, netStep, readOnlineInput, sendInputs } from './net/online.js';
+import { drawPos, easeCorrections, net, netStep, readOnlineInput, sendInputs, snapAlpha } from './net/online.js';
 
 // The fixed-step simulation (step) and the render loop (frame).
 function step(h) {
@@ -32,7 +32,6 @@ function step(h) {
   stepTerrainBits(h);
   stepSmoke(h);
   activeMap().step?.(h);
-  stepBoxes(h);
 }
 
 /* Game state and loop */
@@ -94,7 +93,7 @@ function frame(now) {
     }
     drawDebug(s, p.k);
   }
-  for (const m of allMaps()) m.draw?.(now, alpha);
+  for (const m of allMaps()) m.draw?.(now, net.online ? snapAlpha() : alpha);   // online, the map runs on the server
   drawBoxes(now);
   drawBigLasers(now);
   gridMesh.visible = isPractice() && PR.grid;

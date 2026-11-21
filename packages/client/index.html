@@ -15,6 +15,7 @@
     </div>
     <div class="actions">
       <button class="btn" id="btnNewGame" type="button">New game <kbd>N</kbd></button>
+      <button class="btn" id="btnLeave" type="button">Leave game</button>
       <button class="btn" id="btnRestart" type="button">Restart match</button>
       <button class="btn" id="btnPause" type="button" aria-pressed="false">Pause <kbd>P</kbd></button>
       <button class="btn" id="btnPanel" type="button" aria-pressed="true">Tuning <kbd>H</kbd></button>
@@ -48,6 +49,12 @@
         <div class="hud-keys"><kbd>↑</kbd>thrust <kbd>←</kbd><kbd>→</kbd>turn <kbd>-</kbd>fire <kbd>↓</kbd>weapon</div>
         <div class="hud-wrow"><button class="hud-btn hud-wbtn" data-p="1" type="button" aria-label="Change weapon"><span class="wico"></span><span class="wname">Blaster</span><kbd>↓</kbd></button></div>
         <div class="hud-pad"></div>
+      </div>
+      <div class="netcard" id="netCard" hidden role="status" aria-live="polite">
+        <p class="netcard-title" id="netTitle"></p>
+        <p class="netcard-text" id="netText"></p>
+        <div class="netcard-link" id="netLinkRow" hidden><input id="netLink" type="text" readonly aria-label="Invite link" spellcheck="false"><button class="pbtn" id="netCopy" type="button">Copy link</button></div>
+        <button class="pbtn" id="netAction" type="button" hidden></button>
       </div>
       <div class="overlay" id="pauseOverlay" hidden><p>Paused<small>Press P to continue</small></p></div>
       <div class="overlay" id="mapToast" hidden><p><span class="toast-name"></span><small class="toast-desc"></small></p></div>
@@ -83,18 +90,20 @@
       <div class="start" id="startScreen" hidden role="dialog" aria-modal="true" aria-labelledby="startTitle">
         <div class="start-box">
           <h2 class="start-title" id="startTitle">New game</h2>
-          <section class="start-row">
+          <section class="start-row" id="startPlayersRow">
             <h3 class="start-label" id="lblPlayers">Players</h3>
             <div class="seg" role="group" aria-labelledby="lblPlayers">
               <button class="seg-btn" type="button" data-players="1" aria-pressed="false"><span class="seg-ico"></span><span><b>1 player</b><small>Fly alone. WASD or the arrows steer.</small></span></button>
               <button class="seg-btn" type="button" data-players="2" aria-pressed="false"><span class="seg-ico"></span><span><b>2 players</b><small>Split screen. WASD against the arrows.</small></span></button>
+              <button class="seg-btn" type="button" data-players="online" aria-pressed="false"><span class="seg-ico"></span><span><b>Online</b><small>Play a friend over the internet. You get a link to send.</small></span></button>
             </div>
           </section>
+          <p class="start-join" id="startJoin" hidden>A friend invited you to an online game. Pick your colour and join.</p>
           <section class="start-row">
             <h3 class="start-label">Skins</h3>
             <div class="skins" id="skinRows"></div>
           </section>
-          <section class="start-row">
+          <section class="start-row" id="startMapRow">
             <h3 class="start-label" id="lblMap">Map</h3>
             <div class="start-maps" id="startMaps" role="group" aria-labelledby="lblMap"></div>
           </section>

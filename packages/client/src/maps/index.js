@@ -2,7 +2,7 @@ import { clamp } from '@rocket-duel/shared/math.js';
 import { H, level, onLevel } from '@rocket-duel/shared/level/mask.js';
 import { rowColor } from '../render/field.js';
 import { levelMat, skyMat } from '../render/scene.js';
-import { resetBoxes } from '../systems/boxes.js';
+import { resetBoxes } from '@rocket-duel/shared/boxes.js';
 import { forest } from './forest/index.js';
 import { desert } from './desert/index.js';
 import { floors } from './floors/index.js';

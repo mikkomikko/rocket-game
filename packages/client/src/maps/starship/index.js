@@ -1,53 +1,25 @@
-import { segDist } from '@rocket-duel/shared/math.js';
-import { ships } from '@rocket-duel/shared/ships/ship.js';
-import { WAVES } from './constants.js';
-import { buildStarship, bulletHitsEnemy, chooseLevel, clearStarship, drawStarship, killEnemy, resetStarship, restartStarship, SH, stepStarship } from './starship.js';
-import { RB, rbLocal } from '../hangar/hangar.js';
-import { hurtRobot } from '../hangar/robot.js';
-import { level } from '@rocket-duel/shared/level/mask.js';
+import { shipRules, SH, WAVES } from '@rocket-duel/shared/maps/starship.js';
+import { RB, rbLocal } from '@rocket-duel/shared/maps/hangar.js';
+import { askRestart, buildStarship, clearStarship, drawStarship, pickLevel, restartStarship, starshipLooks } from './starship.js';
+import { resetRobotLooks, robotLooks } from '../hangar/robot.js';
 
-const robotUp = () => SH.spec && SH.spec.mode === 'robot' && RB.on && !RB.dead;
-
-// Starship and Robot hangar: co-op fights against red robot ships and the giant robot.
+// Starship and Robot hangar: co-op fights against red robot ships and the giant robot. The fight runs in
+// the shared rules (shipRules); this adds how it looks and the players' level and restart keys.
 export const ship = {
+  ...shipRules,
   shader: { steel: 1 },
   material: 'metal',
-  coop: true,
-  enter() { SH.spec = level.spec; buildStarship(); },
-  leave() { clearStarship(); },
-  reset() { resetStarship(); },
-  step(h) { stepStarship(h); },
-  draw(now) { drawStarship(now); },
-  bulletHit(x, y, owner, dmg, kind) { return owner < 2 && bulletHitsEnemy(owner, x, y, dmg, kind); },
-  blastHit(x, y, R, owner, dmg) {
-    for (const e of SH.enemies) {
-      if (e.dead) continue;
-      const d = Math.hypot(e.x - x, e.y - y);
-      if (d < R + e.K.r) { e.hp -= dmg; e.flash = 0.08; if (e.hp <= 0 && owner < 2) killEnemy(e, ships[owner]); }
-    }
-    if (owner < 2 && robotUp() && Math.hypot(RB.x - x, RB.y + 300 - y) < R + 150) hurtRobot(dmg, ships[owner]);
-  },
-  beamHit(b, s, len, half, dmg) {
-    for (const e of SH.enemies) {
-      if (e.dead || b.hit.has(e)) continue;
-      if (segDist(e.x, e.y, b.ox, b.oy, b.ang, len) < half + e.K.r) {
-        b.hit.add(e);
-        e.hp -= dmg;
-        e.flash = 0.15;
-        if (e.hp <= 0) killEnemy(e, s);
-      }
-    }
-    if (robotUp() && !b.hit.has(RB) && segDist(RB.x, RB.y + 300, b.ox, b.oy, b.ang, len) < half + 120) {
-      b.hit.add(RB);
-      hurtRobot(dmg, s);
-    }
-  },
-  shipsSafe() { return RB.cut; },   // the robot's death cutscene
-  onKill() { SH.deaths++; },
+  enter() { shipRules.start(); resetRobotLooks(); buildStarship(); },
+  leave() { shipRules.start(); resetRobotLooks(); clearStarship(); },
+  reset() { shipRules.start(); resetRobotLooks(); },
+  step(h) { starshipLooks(); robotLooks(h); },
+  draw(now, alpha) { drawStarship(now, alpha); },
+  // On its own a browser restarts by rebuilding the map; every other control goes to the shared rules.
+  action(s, a) { if (a && a.restart === true) { if (SH.state === 'done') restartStarship(); } else shipRules.action(s, a); },
   keydown(e) {
-    if (e.code === 'KeyR' && SH.state === 'done') { restartStarship(); return true; }
+    if (e.code === 'KeyR' && SH.state === 'done') { askRestart(); return true; }
     const digit = /^(?:Digit|Numpad)([1-5])$/.exec(e.code);
-    if (digit && SH.state === 'choose') { chooseLevel(+digit[1]); return true; }
+    if (digit && SH.state === 'choose') { pickLevel(+digit[1]); return true; }
     return false;
   },
   hudLevel() {
