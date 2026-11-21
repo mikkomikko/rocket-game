@@ -32,7 +32,7 @@ export function drawPools() {
     const col = bulletColor(i);
     bp[n * 3] = B.x[i]; bp[n * 3 + 1] = B.y[i]; bp[n * 3 + 2] = 0;
     bc[n * 3] = col.r; bc[n * 3 + 1] = col.g; bc[n * 3 + 2] = col.b;
-    bs[n] = kind === 1 ? wp.size * (0.9 + 0.15 * Math.sin(game.time * 30 + i)) : wp.homing ? wp.size * (0.8 + 0.3 * Math.random()) : wp.size;
+    bs[n] = wp.frag ? wp.size * (0.85 + 0.3 * Math.abs(Math.sin(game.time * 18 + i))) : kind === 1 ? wp.size * (0.9 + 0.15 * Math.sin(game.time * 30 + i)) : wp.homing ? wp.size * (0.8 + 0.3 * Math.random()) : wp.size;
     // Live piece from the last dropped trail point up to the bullet itself.
     tn = trailQuad(tp, tc, tn, B.tx[i], B.ty[i], Math.max(0, 1 - (now - B.tt[i]) / wp.tLife), B.x[i], B.y[i], 1, wp.tWidth, col.r, col.g, col.b);
     n++;
@@ -56,7 +56,7 @@ export function drawPools() {
   uploadUsed(partGeo, n, 'position', 'tint', 'size');
   drawTerrainBits();
 
-  const sp = smokeGeo.attributes.position.array, ss = smokeGeo.attributes.size.array, sa = smokeGeo.attributes.alpha.array;
+  const sp = smokeGeo.attributes.position.array, ss = smokeGeo.attributes.size.array, sa = smokeGeo.attributes.alpha.array, sd = smokeGeo.attributes.dark.array;
   n = 0;
   for (let i = 0; i < MAXS; i++) {
     if (!SM.on[i]) continue;
@@ -64,10 +64,11 @@ export function drawPools() {
     sp[n * 3] = SM.x[i]; sp[n * 3 + 1] = SM.y[i]; sp[n * 3 + 2] = 0;
     ss[n] = SM.sz[i] * (1 + 2.5 * age);
     sa[n] = 0.32 * f * Math.min(1, age * 12);
+    sd[n] = SM.dark[i];
     n++;
   }
   smokeGeo.setDrawRange(0, n);
-  uploadUsed(smokeGeo, n, 'position', 'size', 'alpha');
+  uploadUsed(smokeGeo, n, 'position', 'size', 'alpha', 'dark');
 }
 
 export function drawDebug(s, alpha) {

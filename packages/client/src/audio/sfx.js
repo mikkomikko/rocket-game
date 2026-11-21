@@ -4,14 +4,27 @@ import { clamp } from '@rocket-duel/shared/math.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { BIG } from '@rocket-duel/shared/ships/bigLaser.js';
 import { startEl } from '../ui/startScreen.js';
+import missileUrl from './missile.mp3';
+import boxUrl from './player-gets-box.mp3';
+import cannonRockUrl from './cannon-hits-terrain-2.mp3';
 
 /* ------------------------------------------------------------------ *
- * Sound: every effect is synthesized live with the Web Audio API (no audio files).
+ * Sound: effects are synthesized live with the Web Audio API; a few recorded samples (the mp3s
+ * next to this file) play on top of the synthesized ones.
  * Browsers only allow audio after a click or key press, so the engine starts on the first one.
  * ------------------------------------------------------------------ */
 export const sfx = (() => {
   let ctx = null, master = null, noiseBuf = null, verb = null;
   const lastAt = {}, engines = [];
+  const SAMPLE_URLS = { missile: missileUrl, box: boxUrl, cannonRock: cannonRockUrl };
+  const samples = {};   // name -> decoded AudioBuffer, filled in once loaded
+  function loadSamples() {
+    for (const [name, url] of Object.entries(SAMPLE_URLS)) {
+      fetch(url).then((r) => r.arrayBuffer()).then((data) => ctx.decodeAudioData(data))
+        .then((buf) => { samples[name] = buf; })
+        .catch((err) => console.warn(`sound ${name} failed to load`, err));
+    }
+  }
   function init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -32,6 +45,7 @@ export const sfx = (() => {
     const wet = ctx.createGain(); wet.gain.value = 0.22;
     verb.connect(wet); wet.connect(master);
     for (let i = 0; i < 2; i++) engines.push(makeEngine(i));
+    loadSamples();
   }
   // Engine: looping noise and a low buzz through a filter that opens up with thrust.
   function makeEngine(i) {
@@ -90,6 +104,16 @@ export const sfx = (() => {
       noise(tk, 0.04, voice(tk, 0.05 * v, 0.001, 0.04, 0.15), 'bandpass', 900 + Math.random() * 2600, 600, 2.5);
     }
   }
+  // Plays a loaded sample (silently skipped until it has loaded).
+  function sample(name, gain, wet = 0) {
+    const buf = samples[name];
+    if (!buf) return;
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const g = ctx.createGain(); g.gain.value = gain;
+    src.connect(g); g.connect(master);
+    if (wet) { const w = ctx.createGain(); w.gain.value = wet; g.connect(w); w.connect(verb); }
+    src.start();
+  }
   function boom(x, y, big) {
     const t = now(), v = near(x, y);
     noise(t, 1.3 * big, voice(t, 0.75 * v * big, 0.004, 1.3 * big, 0.45), 'lowpass', 3200, 90, 0.6);
@@ -142,6 +166,33 @@ export const sfx = (() => {
       const t = now(), v = near(s.x, s.y);
       tone('sine', 220, 70, t, 0.12, voice(t, 0.3 * v, 0.002, 0.12, 0.15));
       noise(t, 0.7, voice(t, 0.16 * v, 0.08, 0.6, 0.3), 'bandpass', 700, 2600, 1.2);
+      sample('missile', 0.8 * v, 0.15);
+    },
+    // Frag grenade launch: a hollow thunk, like a grenade launcher.
+    frag(s) {
+      if (!ready('frag' + s.id, 0.05)) return;
+      const t = now(), v = near(s.x, s.y);
+      tone('sine', 150, 55, t, 0.22, voice(t, 0.45 * v, 0.003, 0.25, 0.2));
+      tone('triangle', 420, 180, t, 0.08, voice(t, 0.12 * v, 0.001, 0.08, 0.1));
+      noise(t, 0.12, voice(t, 0.2 * v, 0.002, 0.12, 0.15), 'lowpass', 1800, 300);
+    },
+    // A frag grenade going off: a sharp crack, a short boom and shrapnel rattling off the rock.
+    fragBurst(x, y) {
+      if (!ready('fragBurst', 0.05)) return;
+      const t = now(), v = near(x, y);
+      noise(t, 0.09, voice(t, 0.55 * v, 0.001, 0.09, 0.3), 'highpass', 2200, 1200);
+      boom(x, y, 0.45);
+      grit(t + 0.03, v * 1.6, 9, 0.35);
+    },
+    // A Cannon shell striking rock.
+    cannonRock(x, y) {
+      if (!ready('cannonRock', 0.06)) return;
+      sample('cannonRock', 0.9 * near(x, y), 0.2);
+    },
+    // A ship picking up a supply box.
+    box(s) {
+      if (!ready('box' + s.id, 0.1)) return;
+      sample('box', 0.8);
     },
     // A round striking a ship: a short metallic clank.
     hit(x, y) {

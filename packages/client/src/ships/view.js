@@ -4,6 +4,7 @@ import { FREEZE_COLOR } from '@rocket-duel/shared/config.js';
 import { H, W } from '@rocket-duel/shared/level/mask.js';
 import { HULL } from '@rocket-duel/shared/ships/ship.js';
 import { glowMat, scene } from '../render/scene.js';
+import { designOf } from './designs.js';
 
 /* ------------------------------------------------------------------ *
  * Ship views: everything the client draws for a ship (meshes, colours, its camera), kept apart from the
@@ -24,16 +25,10 @@ function makeView(id) {
   group.position.z = 1;
   const aura = new THREE.Mesh(new THREE.PlaneGeometry(64, 64), glowMat(col, 0.2));
   aura.position.z = -0.05;
-  const hullMat = new THREE.MeshBasicMaterial({ color: hex, transparent: true });
-  const shadeMat = new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(0.45), transparent: true });
-  const left = new THREE.Mesh(shapeGeo([[0, 12], [-8, -8], [-3, -4.5], [0, -4.5]]), hullMat);
-  const right = new THREE.Mesh(shapeGeo([[0, 12], [0, -4.5], [3, -4.5], [8, -8]]), shadeMat);
-  const cockpit = new THREE.Mesh(shapeGeo([[0, 7], [2.6, 0.5], [-2.6, 0.5]]), new THREE.MeshBasicMaterial({ color: '#1b1640', transparent: true }));
-  cockpit.position.z = 0.01;
-  const glint = new THREE.Mesh(shapeGeo([[0, 6.2], [-1.9, 1.2], [-0.9, 1.2]]), new THREE.MeshBasicMaterial({ color: '#b9b0ff', transparent: true, opacity: 0.7 }));
-  glint.position.z = 0.02;
+  // The hull itself comes from the chosen design (ships/designs.js); setDesign() swaps it.
+  const hull = new THREE.Group();
   const flame = new THREE.Group();
-  flame.position.set(0, -4.5, -0.01);
+  flame.position.z = -0.01;
   const outer = new THREE.Mesh(new THREE.PlaneGeometry(10, 28), glowMat(new THREE.Color('#ff7a2e'), 0.95));
   outer.position.y = -10;
   const inner = new THREE.Mesh(new THREE.PlaneGeometry(5, 13), glowMat(new THREE.Color('#fff1c2'), 1));
@@ -50,38 +45,8 @@ function makeView(id) {
   ice.add(iceShell, iceRing);
   ice.visible = false;
   ice.userData = { shell: iceShell, ring: iceRing };
-  group.add(aura, flame, left, right, cockpit, glint, shield, ice);
+  group.add(aura, flame, hull, shield, ice);
 
-  // Aim guide: a faint line from the nose out to a small crosshair. Seen only in this player's own view.
-  const aim = new THREE.Group();
-  const AIM_FROM = 15, AIM_TO = 84, AIM_R = 4.2;
-  const lineLen = AIM_TO - AIM_R - 2 - AIM_FROM;
-  const lineGeo = new THREE.PlaneGeometry(0.9, lineLen);
-  const lc = [];
-  for (let i = 0; i < lineGeo.attributes.position.count; i++) {
-    const top = lineGeo.attributes.position.getY(i) > 0;
-    lc.push(col.r, col.g, col.b, top ? 0.06 : 0.38);   // fades out towards the crosshair
-  }
-  lineGeo.setAttribute('color', new THREE.Float32BufferAttribute(lc, 4));
-  const aimLine = new THREE.Mesh(lineGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-  aimLine.position.y = AIM_FROM + lineLen / 2;
-  const crossMat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending });
-  const cross = new THREE.Group();
-  cross.position.y = AIM_TO;
-  cross.add(new THREE.Mesh(new THREE.RingGeometry(AIM_R - 0.7, AIM_R, 32), crossMat));
-  for (let k = 0; k < 4; k++) {
-    const tick = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.6), crossMat);
-    const ang = k * Math.PI / 2;
-    tick.position.set(-Math.sin(ang) * (AIM_R + 2), Math.cos(ang) * (AIM_R + 2), 0);
-    tick.rotation.z = ang;
-    cross.add(tick);
-  }
-  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.7, 12), crossMat);
-  cross.add(dot);
-  aim.add(aimLine, cross);
-  aim.position.z = 0.06;
-  aim.traverse((o) => o.layers.set(id + 1));
-  group.add(aim);
   scene.add(group);
 
   // Debug helpers
@@ -99,12 +64,28 @@ function makeView(id) {
   arrow.position.z = 4; arrow.visible = false;
   scene.add(arrow);
 
-  return {
-    hex, color: new THREE.Color(hex), group, flame, hullMat, shadeMat, crossMat, aimGeo: lineGeo, aura, shield, traj, hullPts, arrow,
-    ice, aim,
+  const v = {
+    hex, color: new THREE.Color(hex), group, flame, hull, aura, shield, traj, hullPts, arrow,
+    ice,
+    design: null, nozzles: null,
     smokeAcc: 0,
     cam: { x: W / 2, y: H / 2, shake: 0 },
   };
+  setDesign(v, null);
+  return v;
 }
+// Builds the ship's hull from a design (ships/designs.js) in the ship's current colour.
+export function setDesign(v, id) {
+  const d = designOf(id);
+  if (v.design === d.id) return;
+  v.hull.traverse((m) => { if (m.isMesh) { m.geometry.dispose(); m.material.dispose(); } });
+  v.hull.clear();
+  v.hull.add(d.build(v.hex));
+  v.design = d.id;
+  v.nozzles = d.nozzles;
+  v.flame.position.y = d.flameY;
+}
+// Recolours the hull to a player colour.
+export function setHullColor(v, hex) { v.hull.children[0]?.userData.setColor(hex); }
 export const TRAJ_MAX = 600;
 export const views = [makeView(0), makeView(1)];

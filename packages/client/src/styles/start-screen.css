@@ -43,6 +43,15 @@
 .skin-who { font-size: 14px; font-weight: 720; margin-bottom: 6px; }
 .skin-who span { font-weight: 500; color: #b9b3e0; }
 .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.designs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.design {
+  font: inherit; font-size: 12px; font-weight: 650; color: #efecff; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 999px;
+}
+.design svg { width: 16px; height: 27px; display: block; }
+.design:hover { background: rgba(255, 255, 255, 0.1); }
+.design[aria-pressed="true"] { border-color: #efecff; background: rgba(255, 255, 255, 0.14); }
 .swatch {
   width: 30px; height: 30px; border-radius: 50%; cursor: pointer; padding: 0;
   background: var(--c); border: 3px solid rgba(14, 11, 38, 0.96);
@@ -55,7 +64,7 @@
 .start-maps .map-card { padding: 5px 5px 8px; }
 .start-maps .map-card .desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .start-maps .map-card[aria-pressed="true"] { border-color: #efecff; background: rgba(255, 255, 255, 0.12); }
-.start .seg-btn:focus-visible, .start .swatch:focus-visible, .start .map-card:focus-visible, .start-go:focus-visible, .start .pbtn:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+.start .seg-btn:focus-visible, .start .swatch:focus-visible, .start .design:focus-visible, .start .map-card:focus-visible, .start-go:focus-visible, .start .pbtn:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 .start-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .start-hint { color: #b9b3e0; font-size: 12px; line-height: 1.8; }
 .start kbd { font: inherit; font-size: 11px; font-weight: 650; color: #efecff; background: rgba(255, 255, 255, 0.12); border-radius: 6px; padding: 1px 5px; margin-right: 2px; }

@@ -5,17 +5,17 @@ import { simEvent } from '../events.js';
 import { random } from '../random.js';
 import { SHIP_RADIUS, ships } from '../ships/ship.js';
 import { addShake, damage, shipMass } from '../ships/physics.js';
-import { dropLaser, finishRun, killEnemy, nearestPlayer, r1, r2, r3, SH, spawnEnemy, startLaser } from './starship.js';
+import { dropLaser, finishRun, killEnemy, laserLength, nearestPlayer, r1, r2, r3, SH, spawnEnemy, startLaser } from './starship.js';
 
 /* ------------------------------------------------------------------ *
- * Robot hangar rules: the giant robot that drops in from the roof. It shoots a laser from its eye,
+ * Robot hangar rules: the giant robot that drops in from the roof. It shoots lasers from both eyes (they meet at one spot),
  * punches with stretchy piston arms and sends out small robots (Starship enemies, starship.js).
  * State only; the client draws it (client maps/hangar) and hears:
  *   robotComing()                   the hangar match started: something big is on its way
  *   robotDrop()                     it drops through the roof
  *   robotLanded(x)                  it hit the deck
- *   robotAwake(x, y)                its eye lit up at (x, y): the fight is on
- *   robotLocked(x, y)               its eye laser locked on (it fires a moment later)
+ *   robotAwake(x, y)                an eye lit up at (x, y) (once per eye): the fight is on
+ *   robotLocked(x, y)               its eye lasers locked on (once per eye; it fires a moment later)
  *   robotStep(x)                    a foot came down at x
  *   robotPunched(x, y)              a fist hit a ship there; robotPunchWall(x, y): it hit a wall
  *   robotArmHit(x, y, counts)       a shot hit an arm (counts: a Cannon hit toward blowing the hand off)
@@ -28,16 +28,23 @@ import { dropLaser, finishRun, killEnemy, nearestPlayer, r1, r2, r3, SH, spawnEn
  * ------------------------------------------------------------------ */
 export const ROBOT_MAXHP = 1400, ROBOT_REACH = 480, ROBOT_XMIN = 1150, ROBOT_HIP = 200;
 const ARM = (side) => ({ side, fx: 0, fy: 0, pfx: 0, pfy: 0, mode: 'rest', t: 0, ux: 0, uy: -1, hit: false, hits: 0, lost: false });
-export const RB = { on: false, state: 'off', x: 1450, y: 56, vy: 0, dir: -1, hp: ROBOT_MAXHP, flash: 0, phase: 0, bob: 0, laserCd: 3, punchCd: 2, spawnCd: 6, spawning: 0, hatch: 0, roof: 0, t: 0, laser: null, dead: false, beamW: 34, cut: false,
+export const RB = { on: false, state: 'off', x: 1450, y: 56, vy: 0, dir: -1, hp: ROBOT_MAXHP, flash: 0, phase: 0, bob: 0, laserCd: 3, punchCd: 2, spawnCd: 6, spawning: 0, hatch: 0, roof: 0, t: 0, laser: null, aim: 0, dead: false, beamW: 13, cut: false,
   arms: [ARM(-1), ARM(1)] };
 // Robot-local point to world, including the tilt when it falls over (it pivots on the edge it falls toward).
 export function rbLocal(lx, ly) {
   const px = (RB.fd || 1) * 112, c = Math.cos(RB.rot || 0), sn = Math.sin(RB.rot || 0), dx = lx - px;
   return [RB.x + px + dx * c - ly * sn, RB.y + dx * sn + ly * c];
 }
-export const rbShoulder = (side) => rbLocal(side * 118, 385 + RB.bob);
+export const rbShoulder = (side) => rbLocal(side * 90, 385 + RB.bob);
 export const rbRest = (side) => { const [sx, sy] = rbShoulder(side); return [sx + side * 28, sy - 165 + 4 * Math.sin(RB.phase * 0.5 + side)]; };
-export function robotEye() { return rbLocal(RB.dir * 14, ROBOT_HIP + 252 + RB.bob); }
+// Its eyes: side 1 the front eye, -1 the back one; side 0 the point between them, where it aims from.
+export const ROBOT_EYE_X = 17;
+export function robotEye(side = 1) { return rbLocal(RB.dir * side * ROBOT_EYE_X, ROBOT_HIP + 251 + RB.bob); }
+// Where both eye lasers meet: along its aim (RB.aim) from between the eyes, on the first wall.
+export function robotFocus() {
+  const [mx, my] = robotEye(0), len = laserLength(mx, my, RB.aim);
+  return [mx + Math.cos(RB.aim) * len, my + Math.sin(RB.aim) * len];
+}
 // It breaks a bit more at 80 %, 60 %, 45 %, 30 % and 15 % health.
 const ROBOT_STAGES = [0.8, 0.6, 0.45, 0.3, 0.15];
 export const robotStage = () => ROBOT_STAGES.filter((f) => RB.hp < ROBOT_MAXHP * f).length;
@@ -61,7 +68,7 @@ function robotPart(x, y) {
   if (!RB.on || RB.dead || RB.state === 'off') return null;
   const lx = x - RB.x, ly = y - RB.y - RB.bob;
   if (Math.abs(lx) < 54 && ly > ROBOT_HIP + 212 && ly < ROBOT_HIP + 292) return 'head';
-  if (ly > 228 && ly < 404 && Math.abs(lx) < 95 + (ly - 228) * 0.1) return 'body';
+  if (ly > 228 && ly < 404 && Math.abs(lx) < 72 + (ly - 228) * 0.08) return 'body';
   if (ly > ROBOT_HIP - 6 && ly < ROBOT_HIP + 36 && Math.abs(lx) < 64) return 'body';
   if (ly > -2 && ly < ROBOT_HIP && Math.abs(lx) < 78) return 'armor';
   for (const a of RB.arms) if ((x - a.fx) ** 2 + (y - a.fy) ** 2 < 34 * 34) return 'armor';
@@ -154,13 +161,13 @@ function stepRobot(h) {
     RB.boot -= h;
     for (const a of RB.arms) { const [rx, ry] = rbRest(a.side); a.fx += (rx - a.fx) * Math.min(1, h * 10); a.fy += (ry - a.fy) * Math.min(1, h * 10); }
     if (RB.boot <= 0) {
-      simEvent('robotAwake', ...robotEye());
+      for (const e of [1, -1]) simEvent('robotAwake', ...robotEye(e));
       for (const s of ships) if (s.active) addShake(s, 0.9);
     }
     return;
   }
   const angry = robotAngry(), k = angry ? 0.7 : 1;
-  const [ex, ey] = robotEye();
+  const [ex, ey] = robotEye(0);
   const s = nearestPlayer(RB.x, RB.y + 300);
   RB.laserCd -= h; RB.punchCd -= h; RB.spawnCd -= h;
   const punching = RB.arms.some((a) => a.mode !== 'rest');
@@ -180,20 +187,21 @@ function stepRobot(h) {
     if (RB.spawning < 0) RB.spawning = 0;
   }
   RB.hatch = approach(RB.hatch, RB.spawning > 0.25 ? 1 : 0, h * 3);
-  // Eye laser: aims while it charges, then sweeps after you while it fires.
-  // It aims, then LOCKS (the line goes thick and steady) and waits a moment before firing: that's your chance to dodge.
-  if (s && !RB.laser && RB.laserCd <= 0 && !punching && (s.x - RB.x) * RB.dir >= 0) {   // its eye only sees forward
-    const L = startLaser(RB, Math.atan2(s.y - ey, s.x - ex));
+  // Eye lasers, one from each eye, both aimed at the same spot: they aim while they charge, then sweep after you.
+  // It aims, then LOCKS (the lines go thick and steady) and waits a moment before firing: that's your chance to dodge.
+  if (s && !RB.laser && RB.laserCd <= 0 && !punching && (s.x - RB.x) * RB.dir >= 0) {   // its eyes only see forward
+    RB.aim = Math.atan2(s.y - ey, s.x - ex);
+    const L = startLaser(RB, RB.aim);
     L.t = 1.3; L.fireT = 0.8;
     RB.laserCd = (angry ? 4.5 : 6.5) + random();
   }
   if (RB.laser) {
     const L = RB.laser;
     if (L.phase === 'warn' && L.t > 0.45) {
-      if (s) L.ang += clamp(wrapAngle(Math.atan2(s.y - ey, s.x - ex) - L.ang), -2.6 * h, 2.6 * h);
+      if (s) RB.aim += clamp(wrapAngle(Math.atan2(s.y - ey, s.x - ex) - RB.aim), -2.6 * h, 2.6 * h);
     } else if (L.phase === 'warn' && !L.locked) {
       L.locked = true;
-      simEvent('robotLocked', ex, ey);
+      for (const e of [1, -1]) simEvent('robotLocked', ...robotEye(e));
     }
   }
   // Walk toward the nearest rocket when it is out of reach.
@@ -281,7 +289,7 @@ function stepRobot(h) {
     }
   }
   // Bumping into its body hurts.
-  const boxes = [[-112, 228, 112, 404], [-64, ROBOT_HIP - 6, 64, ROBOT_HIP + 36], [-54, ROBOT_HIP + 212, 54, ROBOT_HIP + 292], [-78, 0, 78, ROBOT_HIP]];
+  const boxes = [[-86, 228, 86, 404], [-64, ROBOT_HIP - 6, 64, ROBOT_HIP + 36], [-54, ROBOT_HIP + 212, 54, ROBOT_HIP + 292], [-78, 0, 78, ROBOT_HIP]];
   for (const o of ships) {
     if (!o.active || !o.alive) continue;
     const r = SHIP_RADIUS * P.shipSize * 0.8, lx = o.x - RB.x, ly = o.y - RB.y - RB.bob;

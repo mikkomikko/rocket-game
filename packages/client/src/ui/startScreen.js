@@ -10,17 +10,18 @@ import { closePicker, picker } from './mapPicker.js';
 import { MAP_ART, svgWrap } from './mapArt.js';
 import { pane } from './tuningPanel.js';
 import { applySkins, rocketSVG, skinOf, SKINS } from './skins.js';
+import { designOf, DESIGNS } from '../ships/designs.js';
 import { connect, hasSeat, net } from '../net/online.js';
 import { appEl } from './header.js';
 
 /* ------------------------------------------------------------------ *
- * Start screen: players, skins and map. Shown when the page opens and
+ * Start screen: players, skins (colour and ship design) and map. Shown when the page opens and
  * from the New game button (or N). Online starts a room on the server; an
  * invite link (?room=abc123) opens it as "Join online game" instead.
  * ------------------------------------------------------------------ */
 const SETUP_KEY = 'rocket-duel-setup-v1';
 export const startEl = document.getElementById('startScreen');
-export const setup = { players: 2, online: false, skins: ['sun', 'sky'], map: 'cave' };
+export const setup = { players: 2, online: false, skins: ['sun', 'sky'], designs: [DESIGNS[0].id, DESIGNS[0].id], map: 'cave' };
 const joinRoom = new URLSearchParams(location.search).get('room');
 let gameStarted = false;
 try {
@@ -29,6 +30,7 @@ try {
     if (saved.players === 1 || saved.players === 2) setup.players = saved.players;
     setup.online = saved.online === true;
     if (Array.isArray(saved.skins) && saved.skins.length === 2 && saved.skins.every((k) => SKINS.some((x) => x.id === k)) && saved.skins[0] !== saved.skins[1]) setup.skins = saved.skins;
+    if (Array.isArray(saved.designs) && saved.designs.length === 2) setup.designs = saved.designs.map((d) => designOf(d).id);
     if (saved.map === 'practice' || MAPS[saved.map]) setup.map = saved.map;
   }
 } catch (e) { /* no saved setup */ }
@@ -46,7 +48,7 @@ const PRACTICE_CARD = {
     <path d="${Array.from({ length: 9 }, (_, i) => `M${i * 22 + 2} 0V110`).join('')}${Array.from({ length: 6 }, (_, i) => `M0 ${i * 22 + 0}H180`).join('')}" stroke="#2b2650" stroke-width="1"/>
     <rect x="3" y="3" width="174" height="104" rx="4" fill="none" stroke="#3a3466" stroke-width="6"/>
     <path d="M60 86 C 70 40, 110 30, 132 50" fill="none" stroke="${skinOf(setup.skins[0]).hex}" stroke-width="1.6" stroke-dasharray="3 4" opacity="0.7"/>
-    <g transform="translate(60 86) rotate(20) scale(1.1)">${rocketSVG(skinOf(setup.skins[0]).hex).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`),
+    <g transform="translate(60 86) rotate(20) scale(1.1)">${rocketSVG(skinOf(setup.skins[0]).hex, setup.designs[0]).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`),
 };
 const startMapList = () => (setup.online ? ONLINE_MAPS : (setup.players === 1 ? ['practice'] : []).concat(Object.keys(MAPS)));
 // Keeps the chosen map one the current choice of players can play.
@@ -65,7 +67,7 @@ function renderStart() {
   startEl.querySelectorAll('.seg-btn').forEach((b) => {
     const k = b.dataset.players, n = +k;
     b.setAttribute('aria-pressed', String(k === 'online' ? setup.online : !setup.online && setup.players === n));
-    b.querySelector('.seg-ico').innerHTML = (n === 1 ? [0] : [0, 1]).map((i) => rocketSVG(skinOf(setup.skins[i]).hex)).join('');
+    b.querySelector('.seg-ico').innerHTML = (n === 1 ? [0] : [0, 1]).map((i) => rocketSVG(skinOf(setup.skins[i]).hex, setup.designs[i])).join('');
   });
   // Skins
   const rows = document.getElementById('skinRows');
@@ -77,7 +79,23 @@ function renderStart() {
     const cur = skinOf(setup.skins[i]), other = setup.skins[1 - i];
     const who = online ? 'Your ship' : `Player ${i + 1}`;
     row.style.setProperty('--skin', cur.hex);
-    row.innerHTML = `<span class="skin-preview">${rocketSVG(cur.hex)}</span><div><div class="skin-who">${who} <span>${cur.name}</span></div><div class="swatches" role="group" aria-label="${who} colour"></div></div>`;
+    const design = designOf(setup.designs[i]);
+    row.innerHTML = `<span class="skin-preview">${rocketSVG(cur.hex, design.id)}</span><div><div class="skin-who">${who} <span>${design.name}, ${cur.name}</span></div><div class="designs" role="group" aria-label="${who} ship"></div><div class="swatches" role="group" aria-label="${who} colour"></div></div>`;
+    const ds = row.querySelector('.designs');
+    for (const d of DESIGNS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'design';
+      b.setAttribute('aria-pressed', String(d.id === design.id));
+      b.title = d.name;
+      b.innerHTML = `${rocketSVG(cur.hex, d.id)}<span>${d.name}</span>`;
+      b.addEventListener('click', () => {
+        setup.designs[i] = d.id;
+        renderStart();
+        rows.querySelectorAll('.skin-row')[i].querySelector(`.design[aria-pressed="true"]`).focus();
+      });
+      ds.append(b);
+    }
     const sw = row.querySelector('.swatches');
     for (const k of SKINS) {
       const b = document.createElement('button');
@@ -142,7 +160,7 @@ startEl.querySelectorAll('.seg-btn').forEach((b) => b.addEventListener('click', 
 export function openStart() {
   if (!startEl.hidden || net.online) return;   // online, Leave game takes you back
   // An invite link: rejoin at once if this tab already has a seat there (a reload), else ask first.
-  if (joinRoom && hasSeat(joinRoom)) { connect({ room: joinRoom, skins: setup.skins }); gameStarted = true; return; }
+  if (joinRoom && hasSeat(joinRoom)) { connect({ room: joinRoom, skins: setup.skins, designs: setup.designs }); gameStarted = true; return; }
   if (joinRoom) appEl.dataset.online = '';   // no local tuning or match controls behind it either
   closePicker();
   if (gameStarted) {
@@ -164,11 +182,11 @@ function closeStart() {
   if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
 }
 function startGame() {
-  applySkins(setup.skins);
+  applySkins(setup.skins, setup.designs);
   if (joinRoom || setup.online) {
     try { localStorage.setItem(SETUP_KEY, JSON.stringify(setup)); } catch (e) { /* saving is optional */ }
     closeStart();
-    connect({ room: joinRoom, map: setup.map, skins: setup.skins });
+    connect({ room: joinRoom, map: setup.map, skins: setup.skins, designs: setup.designs });
     gameStarted = true;
     return;
   }

@@ -65,7 +65,7 @@ const sparks = (x, y, n, sp, life, col, grav, size) => { for (let j = 0; j < n; 
 
 // What the shared rules report (online, replayed from the server's events).
 onSim('robotComing', () => showToast('Robot hangar', 'Something big is coming... Work together!'));
-onSim('robotDrop', () => showToast('GIANT ROBOT!', 'It shoots a laser from its eye, punches and sends small robots. Work together, and aim for the head!'));
+onSim('robotDrop', () => showToast('GIANT ROBOT!', 'It shoots lasers from both eyes, punches and sends small robots. Work together, and aim for the head!'));
 onSim('robotLanded', (x) => {
   for (const fx of [-50, 50]) for (let i = 0; i < 25; i++) emit(x + fx, 60, (Math.random() - 0.5) * 300, Math.random() * 160, 0.6 + Math.random() * 0.5, Math.random() < 0.5 ? WHITE : ROBOT_ORANGE, 1, 3 + Math.random() * 5);
   if (P.smoke) for (let i = 0; i < 10; i++) emitSmoke(x + (Math.random() - 0.5) * 160, 70, (Math.random() - 0.5) * 120, 20 + Math.random() * 40, 1.6 + Math.random(), 10 + Math.random() * 8);
@@ -118,12 +118,12 @@ onSim('robotBroke', (n) => {
     const sh = rbShoulder(-1);
     spawnDebris([[-38, -8], [38, -8], [30, 28], [-30, 32]], M.plate, sh[0], sh[1] + 10, -200 + Math.random() * 100, 260);
     robotBoom(sh[0], sh[1], false);
-    piece([[-14, -13], [14, -13], [5, 14], [-5, 14]], M.stripe, 0, HY + 50);
+    piece([[-7, -12], [7, -12], [6, 12], [-6, 12]], M.silver, 0, HY - 28);
   }
   if (n === 4) {
     const [x, y] = at(0, 316);
-    spawnDebris([[-80, -74], [0, -74], [0, 76], [-92, 76]], M.plate, x - 30, y, -260 - Math.random() * 120, 300);
-    spawnDebris([[0, -74], [80, -74], [92, 76], [0, 76]], M.plate, x + 30, y, 260 + Math.random() * 120, 320);
+    spawnDebris([[-61, -74], [0, -74], [0, 76], [-70, 76]], M.plate, x - 23, y, -260 - Math.random() * 120, 300);
+    spawnDebris([[0, -74], [61, -74], [70, 76], [0, 76]], M.plate, x + 23, y, 260 + Math.random() * 120, 320);
     boom(0, 320); boom(-40, 280); shards(0, 320, 6);
   }
   if (n === 5) {
@@ -159,7 +159,7 @@ export function robotLooks(h) {
   if (RB.state === 'fight' && !(RB.boot > 0)) {
     const L = RB.laser;
     if (L && L.phase === 'warn' && !L.locked && Math.random() < h * 45) {
-      const [ex, ey] = robotEye(), a = Math.random() * Math.PI * 2, r = 40 + Math.random() * 30;
+      const [ex, ey] = robotEye(Math.random() < 0.5 ? 1 : -1), a = Math.random() * Math.PI * 2, r = 40 + Math.random() * 30;
       emit(ex + Math.cos(a) * r, ey + Math.sin(a) * r, -Math.cos(a) * r * 3.2, -Math.sin(a) * r * 3.2, 0.3, Math.random() < 0.6 ? ENEMY_RED : WHITE, 0, 3 + Math.random() * 2);
     }
     if (P.smoke && Math.random() < h * 1.5) emitSmoke(RB.x + (Math.random() < 0.5 ? -64 : 64), RB.y + 470 + RB.bob, (Math.random() - 0.5) * 20, 40, 1.2, 6);
@@ -182,7 +182,7 @@ function damageLooks(h) {
     else if (!a.lost && a.hits >= 3 && P.smoke && Math.random() < h * 4) emitSmoke(a.fx, a.fy, 0, 20, 0.9, 5);
   }
   if (st >= 1 && Math.random() < h * st * 2.5) {
-    const [px, py] = at((Math.random() - 0.5) * 180, 240 + Math.random() * 220);
+    const [px, py] = at((Math.random() - 0.5) * 140, 240 + Math.random() * 220);
     for (let j = 0; j < 6; j++) emit(px, py, (Math.random() - 0.5) * 200, Math.random() * 160, 0.4, j % 2 ? EMBER : WHITE, 0.8, 2 + Math.random() * 2);
   }
   if (P.smoke && st >= 2 && Math.random() < h * st * 0.9) {
@@ -266,7 +266,7 @@ export function drawRobot(now, alpha) {
     L.flame.visible = RB.state === 'drop';
     if (L.flame.visible) L.flame.scale.y = 0.7 + Math.random() * 0.5;
   }
-  R.doorL.position.x = -19 - RB.hatch * 36; R.doorR.position.x = 19 + RB.hatch * 36;
+  R.doorL.position.x = -11.5 - RB.hatch * 24; R.doorR.position.x = 11.5 + RB.hatch * 24;
   R.hatchGlow.material.opacity = 0.15 + 0.6 * RB.hatch;
   const L = RB.laser, warn = L && L.phase === 'warn';
   const locked = !!(L && warn && L.locked), booting = RB.state === 'fight' && RB.boot > 0;
@@ -277,12 +277,13 @@ export function drawRobot(now, alpha) {
   if (dying) eo = !RB.down ? (Math.random() < 0.3 ? 0.1 : 0.9) : RB.downT < 1.8 ? (Math.sin(now / 45) > 0.2 ? 0.7 * (1 - RB.downT / 1.8) : 0.03) : 0;
   R.eyeGlow.material.opacity = eo;
   R.eyeGlow.scale.setScalar(L && !warn ? 1.9 : locked ? 1.4 : 1);
-  R.scan.position.x = Math.sin(now / 260) * 36;
+  R.eyeGlow2.scale.copy(R.eyeGlow.scale);
+  R.scan.position.x = Math.sin(now / 260) * 24;
   R.scan.material.opacity = eo > 0.2 ? 0.85 : 0;
   const angryNow = robotAngry();
   R.M.energy.color.copy(angryNow ? ENEMY_RED : ROBOT_ORANGE);
   R.M.energy.opacity = RB.state === 'drop' || booting ? 0.15 : 0.3 + 0.22 * Math.sin(now / (angryNow ? 70 : 220));
-  for (const ex of R.exhaust) { ex.material.opacity = (RB.state === 'drop' ? 0.9 : 0.3) + Math.random() * 0.3; ex.scale.y = RB.state === 'drop' ? 1.8 : 1; }
+  for (const ex of R.exhaust) { ex.material.opacity = RB.state === 'drop' ? 0.9 + Math.random() * 0.3 : 0; ex.scale.y = RB.state === 'drop' ? 1.8 : 1; }
   R.tips.forEach((t, i) => { t.visible = !D.tipGone[i] && !(dying && RB.down) && Math.sin(now / 180 + i * 2.5) > -0.3; });
   if (dying && RB.down) { R.M.energy.opacity = Math.max(0, 0.5 - RB.downT * 0.25); R.scan.material.opacity = 0; }
   R.coreGlow.material.opacity = (angryNow ? 0.6 + 0.4 * Math.sin(now / 90) : 0.45 + 0.15 * Math.sin(now / 400));
@@ -293,10 +294,14 @@ export function drawRobot(now, alpha) {
     const A = R.arms[i], [sx, sy] = rbShoulder(a.side);
     const fx = a.pfx + (a.fx - a.pfx) * alpha, fy = a.pfy + (a.fy - a.pfy) * alpha;   // between steps (online: between snapshots)
     const dx = fx - sx, dy = fy - sy, len = Math.max(1, Math.hypot(dx, dy)), ang = Math.atan2(dy, dx);
-    for (const [m, l, w] of [[A.rod, len, 20], [A.coil, len, 6], [A.piston, Math.min(len, 150), 40], [A.band, Math.min(len, 150) * 0.2, 42]]) {
+    const up = Math.min(len, 150), cx = Math.cos(ang), cy = Math.sin(ang);
+    for (const [m, l, w] of [[A.rod, len, 14], [A.coil, len, 2], [A.piston, up, 24], [A.band, 9, 28], [A.cuff, 7, 18]]) {
       m.position.set(sx, sy, m.position.z); m.rotation.z = ang; m.scale.set(Math.max(1, l), w, 1);
     }
-    A.band.position.set(sx + Math.cos(ang) * Math.min(len, 150) * 0.6, sy + Math.sin(ang) * Math.min(len, 150) * 0.6, A.band.position.z);
+    // Silver rings at the elbow and near the wrist.
+    A.band.position.set(sx + cx * (up - 9), sy + cy * (up - 9), A.band.position.z);
+    const wr = Math.max(up + 6, len - 40);
+    A.cuff.position.set(sx + cx * wr, sy + cy * wr, A.cuff.position.z);
     A.shoulder.position.set(sx, sy, A.shoulder.position.z);
     A.pad.position.set(sx, sy + 6, A.pad.position.z);
     A.pad.scale.x = a.side;

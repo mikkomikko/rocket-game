@@ -147,10 +147,13 @@ export const levelMat = new THREE.ShaderMaterial({
     uForest: { value: 0 },
     uDesert: { value: 0 },
     uSteel: { value: 0 },
+    uLights: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },   // (x, y, strength): see lights.js
+    uLightN: { value: 0 },
   },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
 uniform sampler2D uField; uniform vec2 uSize; uniform vec3 uP1; uniform vec3 uP2; uniform float uForest; uniform float uSteel; uniform float uDesert;
+uniform vec3 uLights[8]; uniform int uLightN;
 varying vec2 vUv;
 ${NOISE_GLSL}
 vec3 rock(float y) {
@@ -210,6 +213,20 @@ void main() {
   col = mix(col, vec3(0.20, 0.52, 0.22), uForest * rim * smoothstep(0.2, 0.8, lit) * 0.7);
   col = mix(col, vec3(0.96, 0.82, 0.58), uDesert * rim * smoothstep(0.2, 0.8, lit) * 0.6);
 
+  // Point lights (a frag grenade, blast flashes): warm light on the rock faces turned towards them, and a soft glow in the air.
+  float lt = 0.0, glow = 0.0;
+  for (int i = 0; i < 8; i++) {
+    if (i >= uLightN) break;
+    vec3 Lp = uLights[i];
+    vec2 to = Lp.xy - px;
+    float d2 = dot(to, to);
+    float face = max(dot(nOut, to * inversesqrt(d2 + 1.0)), 0.0);
+    lt += Lp.z * exp(-d2 / 19000.0) * (0.2 + 0.8 * face * rim) * (1.0 - 0.75 * deep);
+    glow += Lp.z * exp(-d2 / 2600.0);
+  }
+  vec3 lightCol = vec3(1.0, 0.82, 0.48);
+  col += lightCol * lt * 0.85;
+
   float de = min(min(px.x, uSize.x - px.x), min(px.y, uSize.y - px.y));
   float frame = 1.0 - smoothstep(15.0, 17.0, de);
   vec3 fc = vec3(0.05, 0.035, 0.09) * (0.92 + 0.08 * sin((px.x + px.y) * 0.25));
@@ -222,7 +239,10 @@ void main() {
   col = mix(col, pc, pad);
   col += grain * 0.04 * (1.0 - pad);
 
-  gl_FragColor = vec4(mix(outC, col, cover), mix(outA, 1.0, cover));
+  float gA = clamp(glow, 0.0, 1.0) * 0.28;
+  float oA = outA + gA - outA * gA;
+  outC = (outC * outA * (1.0 - gA) + lightCol * gA) / max(oA, 1e-4);
+  gl_FragColor = vec4(mix(outC, col, cover), mix(oA, 1.0, cover));
 }`,
   transparent: true,
   depthWrite: false,

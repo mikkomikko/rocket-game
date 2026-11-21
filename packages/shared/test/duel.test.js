@@ -98,7 +98,7 @@ describe('the computer pilot in a one-player game', () => {
   }
 
   it('flies to the player through the cave and shoots them down, without crashing', () => {
-    const { me, cpu, crashes } = play('cave', 3, 120, () => ships[1].score >= 1);
+    const { me, cpu, crashes } = play('cave', 4, 120, () => ships[1].score >= 1);
     expect(cpu.score).toBeGreaterThanOrEqual(1);
     expect(me.score).toBe(0);
     expect(crashes).toBe(0);

@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rocket preview</title>
+<style>
+  :root { color-scheme: dark; --bg: #0a0820; --card: #15112e; --line: #2c2554; --text: #ece8ff; --dim: #9a93c4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; padding: 24px 16px 48px; }
+  main { max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.lead { color: var(--dim); margin: 0 0 18px; max-width: 72ch; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-bottom: 14px; }
+  .controls label { display: flex; gap: 6px; align-items: center; cursor: pointer; user-select: none; }
+  .controls select { font: inherit; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+  .swatch { display: inline-flex; gap: 6px; }
+  .swatch button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+  .swatch button[aria-pressed="true"] { border-color: var(--text); }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  #big { display: block; width: 100%; height: min(68vh, 620px); }
+  #strip { display: block; width: 100%; height: 160px; }
+  h3 { font-size: 15px; margin: 24px 0 8px; }
+  .note { color: var(--dim); font-size: 13px; margin-top: 6px; }
+  kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Ship designs</h1>
+  <p class="lead">The ship designs from <code>src/ships/designs.js</code>, the same module the game uses, with the game's exhaust copied in (glow flame, sparks and smoke, same rates and sizes as <code>fx/effects.js</code>). Temporary page for working on new designs.</p>
+
+  <div class="controls">
+    <span class="swatch" role="group" aria-label="Player colour">
+      <button data-hex="#ffe066" style="background:#ffe066" aria-pressed="true" title="Player 1"></button>
+      <button data-hex="#6ee7ff" style="background:#6ee7ff" aria-pressed="false" title="Player 2"></button>
+    </span>
+    <label>Ship <select id="design"></select></label>
+    <label>Thrust
+      <select id="mode">
+        <option value="on">On</option>
+        <option value="pulse" selected>Pulse</option>
+        <option value="hold">Hold Space</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="fly" checked> Fly around</label>
+    <label><input type="checkbox" id="smoke" checked> Smoke</label>
+    <label><input type="checkbox" id="aura" checked> Aura</label>
+  </div>
+
+  <div class="panel"><canvas id="big"></canvas></div>
+  <p class="note">Close-up, camera following the ship. <kbd>Space</kbd> thrusts in “Hold Space” mode.</p>
+
+  <h3>At game size</h3>
+  <div class="panel"><canvas id="strip"></canvas></div>
+  <p class="note">Same scale as in play (zoom 1.5): every design in player 1 and player 2 colours, hovering.</p>
+</main>
+
+<script type="module">
+import * as THREE from 'three';
+import { DESIGNS, designOf } from '/src/ships/designs.js';
+
+/* The designs come from the game itself. */
+/* ================= the game's glow and particles (copied from the client) ================= */
+const glowTex = (() => {   // render/scene.js
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.55)');
+  gr.addColorStop(0.6, 'rgba(255,255,255,0.12)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+const glowMat = (color, opacity) => new THREE.MeshBasicMaterial({ map: glowTex, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
+
+const FIRE = new THREE.Color('#ff8f3d'), EMBER = new THREE.Color('#ffd166');
+const GRAVITY = 16, HZ = 120, SMOKE_LIFE = 3, SMOKE_RATE = 45;
+const pointScale = { value: 1 };
+
+// fx/pools.js: soft additive points sized in world units
+const sparkMat = new THREE.ShaderMaterial({
+  uniforms: { uScale: pointScale, uCore: { value: 0 } },
+  vertexShader: `attribute float size; attribute vec3 tint; uniform float uScale; varying vec3 vTint;
+    void main() { vTint = tint; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * uScale; }`,
+  fragmentShader: `uniform float uCore; varying vec3 vTint;
+    void main() { float d = length(gl_PointCoord - 0.5) * 2.0; if (d > 1.0) discard; float a = 1.0 - d; a *= a;
+      float core = smoothstep(0.45, 0.0, d) * uCore; gl_FragColor = vec4(vTint * a + vec3(core), 1.0);
+      #include <colorspace_fragment>
+    }`,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+});
+// fx/smoke.js
+const smokeMat = new THREE.ShaderMaterial({
+  uniforms: { uScale: pointScale, uColor: { value: new THREE.Color('#8d779f') } },
+  vertexShader: `attribute float size; attribute float alpha; uniform float uScale; varying float vAlpha;
+    void main() { vAlpha = alpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * uScale; }`,
+  fragmentShader: `uniform vec3 uColor; varying float vAlpha;
+    void main() { float d = length(gl_PointCoord - 0.5) * 2.0; if (d > 1.0) discard; float a = 1.0 - d * d;
+      gl_FragColor = vec4(uColor, a * a * vAlpha);
+      #include <colorspace_fragment>
+    }`,
+  transparent: true, depthWrite: false,
+});
+
+function pool(n, attrs) {
+  const geo = new THREE.BufferGeometry();
+  for (const [k, size] of Object.entries(attrs)) geo.setAttribute(k, new THREE.BufferAttribute(new Float32Array(n * size), size));
+  return { n, cursor: 0, geo, x: new Float32Array(n), y: new Float32Array(n), vx: new Float32Array(n), vy: new Float32Array(n),
+    life: new Float32Array(n), max: new Float32Array(n), sz: new Float32Array(n), g: new Float32Array(n), floor: new Float32Array(n),
+    r: new Float32Array(n), gr: new Float32Array(n), b: new Float32Array(n), on: new Uint8Array(n) };
+}
+const PT = pool(3000, { position: 3, tint: 3, size: 1 });
+const SM = pool(2000, { position: 3, size: 1, alpha: 1 });
+
+function emit(x, y, vx, vy, life, color, grav, size, floor) {
+  const i = PT.cursor; PT.cursor = (PT.cursor + 1) % PT.n;
+  PT.on[i] = 1; PT.x[i] = x; PT.y[i] = y; PT.vx[i] = vx; PT.vy[i] = vy; PT.life[i] = PT.max[i] = life;
+  PT.g[i] = grav; PT.sz[i] = size; PT.r[i] = color.r; PT.gr[i] = color.g; PT.b[i] = color.b; PT.floor[i] = floor;
+}
+function emitSmoke(x, y, vx, vy, life, size, floor) {
+  const i = SM.cursor; SM.cursor = (SM.cursor + 1) % SM.n;
+  SM.on[i] = 1; SM.x[i] = x; SM.y[i] = y; SM.vx[i] = vx; SM.vy[i] = vy; SM.life[i] = SM.max[i] = life; SM.sz[i] = size; SM.floor[i] = floor;
+}
+function stepPools(h) {
+  const drag = Math.exp(-1.5 * h);
+  for (let i = 0; i < PT.n; i++) {
+    if (!PT.on[i]) continue;
+    if ((PT.life[i] -= h) <= 0) { PT.on[i] = 0; continue; }
+    PT.vy[i] -= GRAVITY * PT.g[i] * h; PT.vx[i] *= drag; PT.vy[i] *= drag;
+    PT.x[i] += PT.vx[i] * h; PT.y[i] += PT.vy[i] * h;
+    if (PT.y[i] < PT.floor[i]) PT.on[i] = 0;
+  }
+  const sdrag = Math.exp(-1.8 * h);
+  for (let i = 0; i < SM.n; i++) {
+    if (!SM.on[i]) continue;
+    if ((SM.life[i] -= h) <= 0) { SM.on[i] = 0; continue; }
+    SM.vx[i] *= sdrag; SM.vy[i] = SM.vy[i] * sdrag + 14 * h;
+    const nx = SM.x[i] + SM.vx[i] * h, ny = SM.y[i] + SM.vy[i] * h;
+    if (ny < SM.floor[i]) { SM.vx[i] = 0; SM.vy[i] = 0; } else { SM.x[i] = nx; SM.y[i] = ny; }
+  }
+}
+function uploadPools() {   // render/draw.js
+  let n = 0;
+  const pp = PT.geo.attributes.position.array, pc = PT.geo.attributes.tint.array, ps = PT.geo.attributes.size.array;
+  for (let i = 0; i < PT.n; i++) {
+    if (!PT.on[i]) continue;
+    const f = PT.life[i] / PT.max[i];
+    pp[n * 3] = PT.x[i]; pp[n * 3 + 1] = PT.y[i]; pp[n * 3 + 2] = 0;
+    pc[n * 3] = PT.r[i] * f; pc[n * 3 + 1] = PT.gr[i] * f; pc[n * 3 + 2] = PT.b[i] * f;
+    ps[n] = PT.sz[i] * (0.35 + 0.65 * f);
+    n++;
+  }
+  PT.geo.setDrawRange(0, n);
+  for (const k of ['position', 'tint', 'size']) PT.geo.attributes[k].needsUpdate = true;
+  n = 0;
+  const sp = SM.geo.attributes.position.array, ss = SM.geo.attributes.size.array, sa = SM.geo.attributes.alpha.array;
+  for (let i = 0; i < SM.n; i++) {
+    if (!SM.on[i]) continue;
+    const f = SM.life[i] / SM.max[i], age = 1 - f;
+    sp[n * 3] = SM.x[i]; sp[n * 3 + 1] = SM.y[i]; sp[n * 3 + 2] = 0;
+    ss[n] = SM.sz[i] * (1 + 2.5 * age);
+    sa[n] = 0.32 * f * Math.min(1, age * 12);
+    n++;
+  }
+  SM.geo.setDrawRange(0, n);
+  for (const k of ['position', 'size', 'alpha']) SM.geo.attributes[k].needsUpdate = true;
+}
+
+/* ================= scene ================= */
+const scene = new THREE.Scene();
+const sparks = new THREE.Points(PT.geo, sparkMat); sparks.frustumCulled = false; sparks.position.z = 1.5;
+const smoke = new THREE.Points(SM.geo, smokeMat); smoke.frustumCulled = false; smoke.position.z = 0.8;
+scene.add(sparks, smoke);
+
+// background stars for the close-up, in world space so movement reads
+{
+  const sp = [];
+  for (let i = 0; i < 900; i++) sp.push((Math.random() - 0.5) * 900, (Math.random() - 0.5) * 700, -1);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: '#4d4790', size: 2, sizeAttenuation: false })));
+}
+
+// A ship: hull + the game's glow flame (ships/view.js) + aura, with the per-step exhaust of fx/effects.js.
+function makeShip(kind, hex, floor = -Infinity) {
+  const col = new THREE.Color(hex);
+  const group = new THREE.Group();
+  const aura = new THREE.Mesh(new THREE.PlaneGeometry(64, 64), glowMat(col, 0.2)); aura.position.z = -0.05;
+  const flame = new THREE.Group();
+  const outer = new THREE.Mesh(new THREE.PlaneGeometry(10, 28), glowMat(new THREE.Color('#ff7a2e'), 0.95)); outer.position.y = -10;
+  const inner = new THREE.Mesh(new THREE.PlaneGeometry(5, 13), glowMat(new THREE.Color('#fff1c2'), 1)); inner.position.set(0, -4.5, 0.005);
+  flame.add(outer, inner);
+  const d = designOf(kind);
+  const hull = d.build(hex), nozzles = d.nozzles;
+  flame.position.set(0, d.flameY, -0.01);
+  group.add(aura, flame, hull);
+  group.position.z = 1;
+  scene.add(group);
+  return { kind, group, aura, flame, hull, nozzles, floor, x: 0, y: 0, vx: 0, vy: 0, a: 0, thrust: 0, smokeAcc: 0 };
+}
+function localToWorld(s, lx, ly) {
+  const c = Math.cos(s.a), sn = Math.sin(s.a);
+  return { x: s.x + lx * c - ly * sn, y: s.y + lx * sn + ly * c };
+}
+function exhaust(s, h) {   // fx/effects.js stepEffects, thrust part
+  const fx = -Math.sin(s.a), fy = Math.cos(s.a);
+  if (s.thrust > 0.05 && Math.random() < s.thrust * 0.9) {
+    const [nx, ny] = s.nozzles[(Math.random() * s.nozzles.length) | 0];
+    const t = localToWorld(s, nx, ny - 0.3);
+    const sp = 120 + Math.random() * 120;
+    emit(t.x, t.y, s.vx - fx * sp + (Math.random() - 0.5) * 50, s.vy - fy * sp + (Math.random() - 0.5) * 50,
+      0.25 + Math.random() * 0.25, Math.random() < 0.5 ? FIRE : EMBER, 0.2, 3 + Math.random() * 3, s.floor);
+  }
+  if (ui.smoke && s.thrust > 0.02) {
+    s.smokeAcc += SMOKE_RATE * s.thrust * h;
+    while (s.smokeAcc >= 1) {
+      s.smokeAcc -= 1;
+      const t = localToWorld(s, (Math.random() - 0.5) * 3, -10);
+      const sp = 30 + Math.random() * 40;
+      emitSmoke(t.x, t.y, s.vx * 0.25 - fx * sp + (Math.random() - 0.5) * 24, s.vy * 0.25 - fy * sp + (Math.random() - 0.5) * 24,
+        SMOKE_LIFE * (0.75 + Math.random() * 0.5), 7 + Math.random() * 5, s.floor);
+    }
+  }
+}
+function drawShip(s) {   // loop.js frame()
+  s.group.position.set(s.x, s.y, 1);
+  s.group.rotation.z = s.a;
+  s.aura.visible = ui.aura;
+  s.aura.material.opacity = 0.16 + 0.18 * s.thrust;
+  s.flame.visible = s.thrust > 0.02;
+  s.flame.scale.set(0.85 + 0.15 * s.thrust, s.thrust * (0.8 + Math.random() * 0.4), 1);
+}
+
+/* ================= ships ================= */
+const ui = { hex: '#ffe066', design: DESIGNS[0].id, mode: 'pulse', fly: true, smoke: true, aura: true, space: false };
+let hero = makeShip(ui.design, ui.hex);
+
+// game-size row, far below the close-up area, sitting over a strip of rock
+const ROW_Y = -2000, FLOOR = ROW_Y - 34;
+const rock = new THREE.Mesh(new THREE.PlaneGeometry(4000, 200), new THREE.MeshBasicMaterial({ color: '#3a2f63' }));
+rock.position.set(0, FLOOR - 100, 0.5); scene.add(rock);
+const row = DESIGNS.flatMap((d) => [[d.id, '#ffe066'], [d.id, '#6ee7ff']]).map(([k, hex], i, all) => {
+  const s = makeShip(k, hex, FLOOR);
+  s.x = (i - (all.length - 1) / 2) * 60; s.y = ROW_Y; s.phase = i * 1.7;
+  return s;
+});
+
+/* ================= controls ================= */
+for (const b of document.querySelectorAll('.swatch button')) {
+  b.addEventListener('click', () => {
+    ui.hex = b.dataset.hex;
+    document.querySelectorAll('.swatch button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    hero.hull.userData.setColor(ui.hex); hero.aura.material.color.set(ui.hex);
+  });
+}
+document.getElementById('mode').addEventListener('change', e => { ui.mode = e.target.value; });
+const designSel = document.getElementById('design');
+designSel.innerHTML = DESIGNS.map((d) => `<option value="${d.id}">${d.name}</option>`).join('');
+designSel.addEventListener('change', () => {
+  ui.design = designSel.value;
+  const old = hero;
+  scene.remove(old.group);
+  hero = makeShip(ui.design, ui.hex);
+  Object.assign(hero, { x: old.x, y: old.y, a: old.a, thrust: old.thrust });
+});
+for (const k of ['fly', 'smoke', 'aura']) document.getElementById(k).addEventListener('change', e => { ui[k] = e.target.checked; });
+addEventListener('keydown', e => { if (e.code === 'Space' && ui.mode === 'hold') { ui.space = true; e.preventDefault(); } });
+addEventListener('keyup', e => { if (e.code === 'Space') ui.space = false; });
+
+/* ================= simulation ================= */
+const approach = (v, t, d) => (v < t ? Math.min(v + d, t) : Math.max(v - d, t));
+function wantThrust(t, phase = 0) {
+  if (ui.mode === 'on') return 1;
+  if (ui.mode === 'hold') return ui.space ? 1 : 0;
+  return ((t + phase) % 2.2) < 1.4 ? 1 : 0;
+}
+let simT = 0;
+function step(h) {
+  simT += h;
+  const want = wantThrust(simT);
+  hero.thrust = approach(hero.thrust, want, h * (want > hero.thrust ? 30 : 26));
+  if (ui.fly) {
+    // follow a looping path with the nose turned into the motion, leaning up against gravity
+    const t = simT * 0.55, R = 150;
+    const nx = Math.sin(t) * R * 1.3, ny = Math.sin(t * 2) * R * 0.45;
+    hero.vx = (nx - hero.x) / h; hero.vy = (ny - hero.y) / h;
+    if (Math.hypot(hero.vx, hero.vy) > 600) { hero.vx = 0; hero.vy = 0; }   // the jump back onto the path
+    hero.x = nx; hero.y = ny;
+    const ta = Math.atan2(-hero.vx, hero.vy + 120);
+    const d = Math.atan2(Math.sin(ta - hero.a), Math.cos(ta - hero.a));
+    hero.a += d * Math.min(1, h * 6);
+  } else {
+    hero.vx = hero.vy = 0;
+    hero.x = approach(hero.x, 0, h * 400); hero.y = approach(hero.y, 0, h * 400);
+    const d = Math.atan2(Math.sin(-hero.a), Math.cos(-hero.a)); hero.a += d * Math.min(1, h * 4);
+  }
+  exhaust(hero, h);
+  for (const s of row) {
+    const w = wantThrust(simT, s.phase);
+    s.thrust = approach(s.thrust, w, h * (w > s.thrust ? 30 : 26));
+    s.a = Math.sin(simT * 0.9 + s.phase) * 0.35;
+    s.y = ROW_Y + Math.sin(simT * 1.3 + s.phase) * 6;
+    exhaust(s, h);
+  }
+  stepPools(h);
+}
+
+/* ================= render ================= */
+function makeView(canvas) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setClearColor('#0a0820');
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  return { canvas, renderer, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10), cx: 0, cy: 0 };
+}
+const big = makeView(document.getElementById('big'));
+const strip = makeView(document.getElementById('strip'));
+function render(v, cx, cy, zoom) {
+  const w = v.canvas.clientWidth, h = v.canvas.clientHeight, pr = v.renderer.getPixelRatio();
+  if (v.canvas.width !== Math.round(w * pr) || v.canvas.height !== Math.round(h * pr)) v.renderer.setSize(w, h, false);
+  const hw = w / zoom / 2, hh = h / zoom / 2;
+  Object.assign(v.cam, { left: cx - hw, right: cx + hw, top: cy + hh, bottom: cy - hh });
+  v.cam.position.z = 5;
+  v.cam.updateProjectionMatrix();
+  pointScale.value = zoom * pr;
+  v.renderer.render(scene, v.cam);
+}
+
+let last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.25); last = now;
+  acc += dt;
+  const h = 1 / HZ;
+  while (acc >= h) { step(h); acc -= h; }
+  drawShip(hero); for (const s of row) drawShip(s);
+  uploadPools();
+  // close-up: about 70 world units tall; the camera trails the ship a little, like the game's camera lag
+  const zoom = big.canvas.clientHeight / 70;
+  const k = 1 - Math.exp(-dt / 0.12);
+  big.cx += (hero.x - big.cx) * k; big.cy += (hero.y - 8 - big.cy) * k;
+  render(big, big.cx, big.cy, zoom);
+  render(strip, 0, ROW_Y - 4, 1.5);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

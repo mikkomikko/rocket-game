@@ -43,7 +43,7 @@ function updateMiniHud() {
     setMP(m, 'ammo', Math.round(am * 1000) / 10, (v) => { m.ammo.style.width = `${v}%`; });
     setMP(m, 'gun', gun, (v) => { m.el.classList.toggle('minigun', v); });
     setMP(m, 'dead', !s.alive, (v) => { m.el.classList.toggle('dead', v); });
-    setMP(m, 'note', !s.alive ? 'Respawning' : gun ? 'Minigun' : s.crossT > 0 ? `Crosshair ${Math.ceil(s.crossT)} s` : '', (v) => { m.note.textContent = v; });
+    setMP(m, 'note', !s.alive ? 'Respawning' : gun ? 'Minigun' : '', (v) => { m.note.textContent = v; });
   }
   const lv = activeMap().hudLevel?.() || `Level: ${isPractice() ? 'Practice' : (MAPS[level.builtMap] || MAPS.cave).name}`;
   setMini('level', lv);
@@ -73,7 +73,6 @@ export function updateHud() {
     else if (s.invulnT > 0) status = 'Shielded';
     if (s.alive && activeMap().shipStatus) status = activeMap().shipStatus(s);
     if (s.alive && s.minigunT > 0) status = `Minigun! ${Math.ceil(s.minigunT)} s left`;
-    if (s.alive && s.crossT > 0 && !status.startsWith('Minigun')) status = status ? `${status} · crosshair ${Math.ceil(s.crossT)} s` : `Crosshair ${Math.ceil(s.crossT)} s left`;
     if (s.alive && s.frozenT > 0) status = `Frozen! ${s.frozenT.toFixed(1)} s`;
     if (s.alive && s.msgUntil > game.time) status = s.msg;
     setIfChanged(h, 'status', h.status, 'text', status);

@@ -15,7 +15,7 @@ export function fire(s) {
   // A missile: where it will go, for the shooter's sight (missile.js; it launches exactly as below, with no spread).
   const reach = wp.homing ? missileReach(s) : null;
   if (wp.homing && !bigFree()) s.missiles--;
-  const ang = s.a + (random() - 0.5) * 2 * (P.spread * (wp.id === 'heavy' ? 0.3 : wp.homing ? 0 : 1) + (s.minigunT > 0 ? 3 : 0)) * DEG;
+  const ang = s.a + (random() - 0.5) * 2 * (P.spread * (wp.id === 'heavy' || wp.frag ? 0.3 : wp.homing ? 0 : 1) + (s.minigunT > 0 ? 3 : 0)) * DEG;
   const dx = -Math.sin(ang), dy = Math.cos(ang);
   const nose = localToWorld(s, 0, 13);
   const spd = P.bulletSpeed * wp.speed;
@@ -32,6 +32,7 @@ export function fire(s) {
     }
   }
   if (wp.id === 'heavy') addShake(s, 0.5);
+  else if (wp.frag) addShake(s, 0.25);
   simEvent('fired', s, wp.id, nose, ang, reach);
   if (!weaponReady(s, s.weapon)) cycleWeapon(s);   // that was the last missile
 }
@@ -49,6 +50,7 @@ export function cycleWeapon(s) {
 // Whether weapon k has a shot left: the Big laser once a match, missiles until they run out (practice with infinite ammo: always).
 export function weaponReady(s, k) {
   const id = WEAPONS[k].id;
+  if (WEAPONS[k].pickable === false) return false;   // a frag grenade's shards
   if (bigFree()) return true;
   if (id === 'laser') return s.bigLaser > 0;
   if (id === 'missile') return s.missiles > 0;

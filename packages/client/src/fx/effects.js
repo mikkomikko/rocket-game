@@ -1,12 +1,15 @@
 import * as THREE from 'three';
-import { MISSILE_IDX, P, WEAPONS } from '@rocket-duel/shared/config.js';
+import { FRAG_IDX, MISSILE_IDX, P, SHARD_IDX, WEAPONS } from '@rocket-duel/shared/config.js';
 import { clamp } from '@rocket-duel/shared/math.js';
 import { onSim } from '@rocket-duel/shared/events.js';
 import { localToWorld, ships } from '@rocket-duel/shared/ships/ship.js';
 import { B, BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
 import { BIG } from '@rocket-duel/shared/ships/bigLaser.js';
+import { solidAt } from '@rocket-duel/shared/level/mask.js';
+import { mapRules } from '@rocket-duel/shared/maps.js';
 import { views } from '../ships/view.js';
-import { DUST, EMBER, FIRE, ICE_COL, MISSILE_COL, WHITE } from './pools.js';
+import { DUST, EMBER, FIRE, FRAG_COL, ICE_COL, MISSILE_COL, SHARD_COL, WHITE } from './pools.js';
+import { flash } from '../render/lights.js';
 import { TR, trailPoint } from './trails.js';
 import { spray, surfaceAt, terrainDebris, terrainMaterial } from './debris.js';
 import { emit } from './particles.js';
@@ -47,7 +50,7 @@ onSim('sound', (name, ...args) => sfx[name](...args));
 onSim('dust', dust);
 onSim('iceBurst', iceBurst);
 onSim('bulletEnd', (i) => trailPoint(i, true));
-onSim('boxTaken', updateWeaponButtons);   // an ammo box brings the missiles back
+onSim('boxTaken', (s) => { sfx.box(s); updateWeaponButtons(); });   // an ammo box brings the missiles back
 onSim('bulletsCleared', () => { SM.on.fill(0); TR.life.fill(0); });
 
 onSim('killed', (s, how) => {
@@ -108,6 +111,15 @@ onSim('fired', (s, id, nose, ang) => {
     updateWeaponButtons();   // one missile fewer
     emit(nose.x, nose.y, s.vx, s.vy, 0.1, MISSILE_COL, 0, 20);
     if (P.smoke) for (let i = 0; i < 5; i++) emitSmoke(nose.x, nose.y, -dx * (20 + Math.random() * 40) + s.vx * 0.3 + (Math.random() - 0.5) * 40, -dy * (20 + Math.random() * 40) + s.vy * 0.3 + (Math.random() - 0.5) * 40, P.smokeLife * 0.5, 7 + Math.random() * 5);
+  } else if (id === 'frag') {
+    sfx.frag(s);
+    emit(nose.x, nose.y, s.vx, s.vy, 0.1, FRAG_COL, 0, 22);
+    flash(nose.x, nose.y, 0.6, 0.12);
+    for (let i = 0; i < 6; i++) {
+      const a = ang + (Math.random() - 0.5) * 0.9, sp = 80 + Math.random() * 140;
+      emit(nose.x, nose.y, -Math.sin(a) * sp + s.vx, Math.cos(a) * sp + s.vy, 0.15 + Math.random() * 0.15, i % 2 ? FIRE : EMBER, 0.2, 3 + Math.random() * 3);
+    }
+    if (P.smoke) for (let i = 0; i < 3; i++) emitSmoke(nose.x, nose.y, dx * 30 + s.vx * 0.3 + (Math.random() - 0.5) * 30, dy * 30 + s.vy * 0.3 + (Math.random() - 0.5) * 30, P.smokeLife * 0.5, 8 + Math.random() * 5);
   } else {
     if (id === 'ice') sfx.freezer(s); else sfx.shoot(s);
     emit(nose.x, nose.y, dx * 80 + s.vx, dy * 80 + s.vy, 0.09, id === 'ice' ? ICE_COL : views[s.id].color, 0, id === 'ice' ? 16 : 12);
@@ -129,7 +141,14 @@ onSim('shipHit', (x, y, s, kind) => {
 });
 onSim('explosion', (x, y, kind) => {
   const blast = WEAPONS[kind]?.blast;
+  if (kind === SHARD_IDX) {   // a frag grenade's shard: a small chip and a spark
+    terrainDebris(x, y, 0.35);
+    emit(x, y, 0, 0, 0.1, SHARD_COL, 0, 8);
+    return;
+  }
   if (!blast) sfx.rock(x, y);
+  // 'explosion' comes before the rock is carved, so this tells a Cannon shell hitting rock from one hitting a ship or fizzling in the air.
+  else if (WEAPONS[kind].id === 'heavy' && (solidAt(x, y) || mapRules().blocksShot?.(x, y))) sfx.cannonRock(x, y);
   terrainDebris(x, y, blast ? 2.6 * blast / 64 + 0.4 : 1);
   const rc = groundRGB(y);
   DUST.setRGB(rc[0] / 255 * 1.6, rc[1] / 255 * 1.6, rc[2] / 255 * 1.6, THREE.SRGBColorSpace);
@@ -142,7 +161,8 @@ onSim('explosion', (x, y, kind) => {
 // A Cannon shell or a missile going off (a missile's blast is smaller).
 onSim('blast', (x, y, kind = 1) => {
   const k = WEAPONS[kind].blast / 64;
-  sfx.blast(x, y, k);
+  if (kind !== FRAG_IDX) sfx.blast(x, y, k);   // the grenade's burst has its own sound (fragBurst)
+  flash(x, y, 0.6 + k, 0.35);
   emit(x, y, 0, 0, 0.22, WHITE, 0, 60 * k);
   emit(x, y, 0, 0, 0.35, FIRE, 0, 110 * k);
   for (let j = 0; j < 40 * k; j++) {
@@ -152,6 +172,22 @@ onSim('blast', (x, y, kind = 1) => {
   if (P.smoke) for (let j = 0; j < 12 * k; j++) {
     const a = Math.random() * Math.PI * 2, sp = 20 + Math.random() * 80;
     emitSmoke(x, y, Math.cos(a) * sp, Math.sin(a) * sp, P.smokeLife * (0.7 + Math.random() * 0.5), (14 + Math.random() * 12) * Math.sqrt(k));
+  }
+});
+
+// A frag grenade bursting: a white-hot flash that lights up the cave, and sparks thrown every way.
+onSim('fragBurst', (x, y) => {
+  sfx.fragBurst(x, y);
+  flash(x, y, 1.6, 0.3);
+  emit(x, y, 0, 0, 0.12, WHITE, 0, 70);
+  emit(x, y, 0, 0, 0.25, FRAG_COL, 0, 45);
+  for (let j = 0; j < 26; j++) {
+    const a = Math.random() * Math.PI * 2, sp = 200 + Math.random() * 380;
+    emit(x, y, Math.cos(a) * sp, Math.sin(a) * sp, 0.12 + Math.random() * 0.2, j % 3 ? SHARD_COL : WHITE, 0.4, 2 + Math.random() * 2.5);
+  }
+  for (const s of ships) if (s.active && s.alive) {
+    const d = Math.hypot(s.x - x, s.y - y);
+    if (d < 400) shake(s, 0.35 * (1 - d / 400));
   }
 });
 
@@ -176,10 +212,13 @@ export function stepEffects(h) {
     }
     const fx = -Math.sin(s.a), fy = Math.cos(s.a);
     if (s.thrust > 0.05 && Math.random() < s.thrust * 0.9) {
-      const t = localToWorld(s, 0, -7);
+      const [nx, ny] = v.nozzles[(Math.random() * v.nozzles.length) | 0];   // the design's nozzles
+      const t = localToWorld(s, nx, ny);
       const sp = 120 + Math.random() * 120;
       emit(t.x, t.y, s.vx - fx * sp + (Math.random() - 0.5) * 50, s.vy - fy * sp + (Math.random() - 0.5) * 50, 0.25 + Math.random() * 0.25, Math.random() < 0.5 ? FIRE : EMBER, 0.2, 3 + Math.random() * 3);
     }
+    // Health: below 30% the exhaust smoke turns dark, below 10% the ship is on fire.
+    const hp = s.hp / 100, dark = hp < 0.3 ? 0.55 + 0.45 * clamp((0.3 - hp) / 0.2, 0, 1) : 0;
     if (P.smoke && s.thrust > 0.02) {
       v.smokeAcc += P.smokeRate * s.thrust * h;
       while (v.smokeAcc >= 1) {
@@ -187,8 +226,13 @@ export function stepEffects(h) {
         const t = localToWorld(s, (Math.random() - 0.5) * 3, -10);
         const sp = 30 + Math.random() * 40;
         emitSmoke(t.x, t.y, s.vx * 0.25 - fx * sp + (Math.random() - 0.5) * 24, s.vy * 0.25 - fy * sp + (Math.random() - 0.5) * 24,
-          P.smokeLife * (0.75 + Math.random() * 0.5), (7 + Math.random() * 5) * P.shipSize);
+          P.smokeLife * (0.75 + Math.random() * 0.5), (7 + Math.random() * 5) * P.shipSize, dark);
       }
+    }
+    if (hp < 0.1) shipBurning(s, h);
+    else if (hp < 0.3 && P.smoke && Math.random() < 6 * h) {   // a damaged hull trails a thin wisp even when coasting
+      const t = localToWorld(s, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+      emitSmoke(t.x, t.y, s.vx * 0.2 + (Math.random() - 0.5) * 10, s.vy * 0.2 + 10, P.smokeLife * 0.5, (4 + Math.random() * 3) * P.shipSize, dark);
     }
   }
   for (let i = 0; i < BULLET_SLOTS; i++) {
@@ -196,8 +240,26 @@ export function stepEffects(h) {
     const kind = B.kind[i];
     if (kind === 1 && P.smoke && Math.random() < 0.5) emitSmoke(B.x[i], B.y[i], (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, P.smokeLife * 0.35, 5 + Math.random() * 3);
     if (kind === MISSILE_IDX) missileExhaust(i);
+    if (kind === FRAG_IDX) {   // the fuse sputters
+      if (Math.random() < 0.7) emit(B.x[i], B.y[i], (Math.random() - 0.5) * 90, (Math.random() - 0.5) * 90 + 30, 0.1 + Math.random() * 0.15, Math.random() < 0.5 ? EMBER : WHITE, 0.3, 1.5 + Math.random() * 2);
+      if (P.smoke && Math.random() < 0.3) emitSmoke(B.x[i], B.y[i], (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, P.smokeLife * 0.3, 3 + Math.random() * 3);
+    }
     if (kind === 2 && Math.random() < 0.35) emit(B.x[i], B.y[i], (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30, 0.35, ICE_COL, 0.2, 2 + Math.random() * 2);
     trailPoint(i, false);
+  }
+}
+
+// A ship nearly out of health burns: flames licking off the hull and thick black smoke.
+function shipBurning(s, h) {
+  const z = P.shipSize;
+  for (let k = 0; k < 2; k++) {
+    if (Math.random() > 40 * h) continue;
+    const t = localToWorld(s, (Math.random() - 0.5) * 12, (Math.random() - 0.3) * 16);
+    emit(t.x, t.y, s.vx * 0.6 + (Math.random() - 0.5) * 40, s.vy * 0.6 + 40 + Math.random() * 60, 0.2 + Math.random() * 0.25, Math.random() < 0.6 ? FIRE : EMBER, -0.3, (3 + Math.random() * 4) * z);
+  }
+  if (P.smoke && Math.random() < 18 * h) {
+    const t = localToWorld(s, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+    emitSmoke(t.x, t.y, s.vx * 0.2 + (Math.random() - 0.5) * 16, s.vy * 0.2 + 20 + Math.random() * 20, P.smokeLife * (0.7 + Math.random() * 0.4), (8 + Math.random() * 6) * z, 1);
   }
 }
 

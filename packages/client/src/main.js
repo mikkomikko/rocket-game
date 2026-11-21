@@ -11,7 +11,7 @@ import { openStart, setup } from './ui/startScreen.js';
 /* ------------------------------------------------------------------ *
  * Start
  * ------------------------------------------------------------------ */
-applySkins(setup.skins);
+applySkins(setup.skins, setup.designs);
 setMode(location.hash.slice(1), true);
 openStart();   // an invite link (?room=…) opens it as "Join online game"
 window.__duelStarted = true;

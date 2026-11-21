@@ -119,6 +119,17 @@ describe('the Starship', () => {
 describe('the Robot hangar', () => {
   beforeEach(() => newMatch('hangar'));
 
+  it('fires a laser from each eye, and both meet at one spot', () => {
+    run(3.1);
+    run(40, () => RB.laser && RB.laser.phase === 'fire');
+    const beams = SH.lasers.filter((L) => L.owner === RB);
+    expect(beams.length).toBe(2);
+    const [a, b] = beams, end = (L) => [L.ox + Math.cos(L.ang) * L.len, L.oy + Math.sin(L.ang) * L.len];
+    expect(Math.hypot(a.ox - b.ox, a.oy - b.oy)).toBeGreaterThan(20);   // two eyes
+    const [ax, ay] = end(a), [bx, by] = end(b);
+    expect(Math.hypot(ax - bx, ay - by)).toBeLessThan(1);   // one spot
+  });
+
   it('drops the giant robot, which takes extra damage to the head and dies', () => {
     expect(SH.state).toBe('between');
     run(3.1);

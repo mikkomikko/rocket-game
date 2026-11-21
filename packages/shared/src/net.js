@@ -38,7 +38,7 @@ export const SNAP_EVERY = 4;   // simulation steps per snapshot (120 Hz / 4 = 30
 export const ONLINE_MAPS = Object.keys(MAPS).filter((k) => !MAPS[k].theme || RULES[MAPS[k].theme]);
 
 const SHIP_FIELDS = ['x', 'y', 'vx', 'vy', 'a', 'av', 'thrust', 'hp', 'ammo', 'landed', 'onPad', 'alive', 'active',
-  'respawnT', 'invulnT', 'score', 'deathX', 'deathY', 'lastImpact', 'weapon', 'frozenT', 'crossT', 'minigunT',
+  'respawnT', 'invulnT', 'score', 'deathX', 'deathY', 'lastImpact', 'weapon', 'frozenT', 'minigunT',
   'bigLaser', 'missiles', 'eaten', 'lava', 'fireCd'];
 const BEAM_FIELDS = ['phase', 't', 'len', 'ox', 'oy', 'ang'];
 const pick = (o, fields) => fields.map((f) => o[f] ?? null);

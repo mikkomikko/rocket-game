@@ -16,6 +16,7 @@ import { drawMissileSights } from './render/missileSight.js';
 import { keysDown, padsSeen, prettyKey, readInputs } from './input.js';
 import { cams, updateCamera, viewRects } from './render/camera.js';
 import { drawDebug, drawPools } from './render/draw.js';
+import { updateLights } from './render/lights.js';
 import { updateHud } from './ui/hud.js';
 import { sfx } from './audio/sfx.js';
 import { updateWeaponBoxes } from './ui/weaponBox.js';
@@ -73,8 +74,6 @@ function frame(now) {
     v.aura.material.opacity = 0.16 + 0.18 * s.thrust + (s.minigunT > 0 ? 0.15 + 0.1 * Math.sin(game.time * 12) : 0);
     v.flame.visible = s.thrust > 0.02;
     v.flame.scale.set(0.85 + 0.15 * s.thrust, s.thrust * (0.8 + Math.random() * 0.4), 1);
-    // No crosshair by default: only while a crosshair box is running (it blinks in the last 3 s).
-    v.aim.visible = s.active && s.crossT > 0 && (s.crossT > 3 || Math.sin(game.time * 16) > -0.3);
     v.ice.visible = s.frozenT > 0;
     if (v.ice.visible) {
       const fade = Math.min(1, s.frozenT / 0.6);   // thaws over the last moment
@@ -93,6 +92,7 @@ function frame(now) {
   pointScale.value = P.zoom * renderer.getPixelRatio();
   skyMat.uniforms.uTime.value = reducedMotion ? 0 : now / 1000;
   drawPools();
+  updateLights();
 
   const rects = viewRects();
   renderer.setScissorTest(true);

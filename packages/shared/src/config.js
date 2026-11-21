@@ -55,7 +55,15 @@ export const WEAPONS = [
   { id: 'missile', name: 'Missile', color: '#ffd23f', speed: 0.3, rate: 0.12, cost: 0, damage: 3.5, hole: 2.2, recoil: 3, knockback: 2.5, life: 1.25, grav: 0, size: 10, trail: 0.05, tLife: 0.7, tWidth: 3.2,
     blast: 34, push: 140,          // a smaller splash than the Cannon's
     homing: { cruise: 0.62, accel: 2.6, turn: 3.2, closeTurn: 16, close: 200, fuse: 6 } },   // see steerMissile
+  { id: 'frag', name: 'Frag grenade', color: '#ffe066', speed: 1.05, rate: 0.16, cost: 6, damage: 1.5, hole: 1.6, recoil: 9, knockback: 3, life: 0.7, grav: 60, size: 13, trail: 0.06, tLife: 0.5, tWidth: 3,
+    drag: 0.01,           // air drag × speed²: leaves the barrel hard, slows down fast, then gravity wins and it drops
+    blast: 26, push: 110, // a small blast of its own where it goes off (fuse, rock or ship) ...
+    frag: { n: 18, speed: 0.95, life: 0.32 } },   // ... and n shards flying out every way (see SHARD_IDX)
+  // A frag grenade's shard: not a weapon you can pick. Each one that hits a ship does its own damage.
+  { id: 'shard', name: 'Shard', color: '#ffb347', pickable: false, speed: 1, rate: 1, cost: 0, damage: 0.8, hole: 0.45, recoil: 0, knockback: 0.6, life: 1, grav: 3, size: 4, trail: 0.02, tLife: 0.18, tWidth: 1.4 },
 ];
+export const FRAG_IDX = WEAPONS.findIndex((w) => w.id === 'frag');
+export const SHARD_IDX = WEAPONS.findIndex((w) => w.id === 'shard');
 export const FREEZE_COLOR = '#9fe7ff';
 /* Missile: launches slowly along the nose, speeds up to its cruise speed (cruise × bulletSpeed) and steers towards the
  * other ship in an arc, turning at most turn rad/s (up to closeTurn near the target, so it can't circle it forever).

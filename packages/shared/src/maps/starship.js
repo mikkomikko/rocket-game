@@ -6,7 +6,7 @@ import { random } from '../random.js';
 import { armForMatch, SHIP_RADIUS, ships } from '../ships/ship.js';
 import { addShake, damage, respawn } from '../ships/physics.js';
 import { clearBullets, spawnBullet } from '../bullets.js';
-import { applyRobot, encodeRobot, hurtRobot, RB, resetRobot, robotEye, robotShot, stepRobotFight } from './hangar.js';
+import { applyRobot, encodeRobot, hurtRobot, RB, resetRobot, robotEye, robotFocus, robotShot, stepRobotFight } from './hangar.js';
 
 /* ------------------------------------------------------------------ *
  * Starship and Robot hangar rules (level theme 'ship'): co-op waves of red robot ships, the raygun on
@@ -57,7 +57,7 @@ function lineOfSight(x0, y0, x1, y1) {
   for (let i = 1; i < n; i++) { const t = i / n; if (solidAt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false; }
   return true;
 }
-function laserLength(ox, oy, ang) {
+export function laserLength(ox, oy, ang) {
   const dx = Math.cos(ang), dy = Math.sin(ang);
   let d = 0;
   while (d < 2600 && !solidAt(ox + dx * d, oy + dy * d)) d += 5;
@@ -72,7 +72,7 @@ export function spawnEnemy(kind, at) {
   return e;
 }
 export function dropLaser(owner) {
-  if (owner.laser) { SH.lasers = SH.lasers.filter((L) => L !== owner.laser); owner.laser = null; }
+  if (owner.laser) { SH.lasers = SH.lasers.filter((L) => L.owner !== owner); owner.laser = null; }
 }
 export function killEnemy(e, by) {
   if (e.dead) return;
@@ -103,7 +103,7 @@ export function bulletHitsEnemy(owner, x, y, dmg = P.bulletDamage, kind = 0) {
 // Big lasers: a warning line first (L.phase 'warn'), then a thick beam that hurts ('fire').
 function laserOrigin(L) {
   if (L.owner === RG) return [RG.x + Math.cos(L.ang) * 56, RG.y + Math.sin(L.ang) * 56];
-  if (L.owner === RB) return robotEye();
+  if (L.owner === RB) return robotEye(L.eye);
   const e = L.owner;
   return [e.x + Math.cos(L.ang) * e.K.r, e.y + Math.sin(L.ang) * e.K.r];
 }
@@ -111,15 +111,23 @@ export function startLaser(owner, ang) {
   const L = { owner, ang, phase: 'warn', t: LASER_WARN, hit: new Set(), width: owner === RG ? 30 : owner === RB ? RB.beamW : owner.kind === 'boss' ? 36 : 26, ox: 0, oy: 0, len: 0, locked: false };
   owner.laser = L;
   SH.lasers.push(L);
+  // The giant robot fires from both eyes: a twin beam from the other eye that follows this one's timing
+  // and shares its hits (a ship caught by both is hurt once).
+  if (owner === RB) { L.eye = 1; SH.lasers.push({ ...L, eye: -1, lead: L }); }
   return L;
 }
 function stepLasers(h) {
   for (const L of SH.lasers) {
     if (L.owner !== RG && L.owner.dead) { L.done = true; continue; }
     [L.ox, L.oy] = laserOrigin(L);
-    L.len = laserLength(L.ox, L.oy, L.ang);
-    L.t -= h;
-    if (L.phase === 'warn') {
+    if (L.owner === RB) {   // each eye's beam runs to the one spot the robot aims at
+      const [fx, fy] = robotFocus();
+      L.ang = Math.atan2(fy - L.oy, fx - L.ox); L.len = Math.hypot(fx - L.ox, fy - L.oy);
+    } else L.len = laserLength(L.ox, L.oy, L.ang);
+    if (L.lead) { L.phase = L.lead.phase; L.t = L.lead.t; L.locked = L.lead.locked; L.done = L.lead.done; }
+    else L.t -= h;
+    if (L.lead) { if (L.phase === 'warn' || L.done) continue; }
+    else if (L.phase === 'warn') {
       if (L.t <= 0) {
         L.phase = 'fire'; L.t = L.fireT || LASER_FIRE;
         for (const s of ships) if (s.active) addShake(s, 0.35);

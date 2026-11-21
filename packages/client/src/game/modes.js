@@ -55,17 +55,17 @@ const MODE_TEXT = {
   duel: {
     sub: 'Two ships, one cave, every constant on a slider.', restart: 'Restart match', name: 'Player 1',
     keys: '<kbd>W</kbd>thrust <kbd>A</kbd><kbd>D</kbd>turn <kbd>L Shift</kbd>fire <kbd>S</kbd>weapon <kbd>Q</kbd>all maps <kbd>M</kbd>sound',
-    aria: 'Game view. Player 1 uses W, A, D and left Shift. Player 2 uses the arrow keys and the minus key.',
+    aria: 'Game view. Player 1 uses W, A, D and left Shift. Player 2 uses the arrow keys and Space.',
   },
   solo: {
     sub: 'You against a computer pilot, on your pick of map.', restart: 'Restart match', name: 'You',
-    keys: '<kbd>W</kbd><kbd>↑</kbd>thrust <kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd>turn <kbd>L Shift</kbd><kbd>-</kbd>fire <kbd>S</kbd><kbd>↓</kbd>weapon <kbd>Q</kbd>next map <kbd>M</kbd>sound',
-    aria: 'Game view, one player. W or Up thrusts, A and D or Left and Right turn, left Shift or minus fires.',
+    keys: '<kbd>W</kbd><kbd>↑</kbd>thrust <kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd>turn <kbd>L Shift</kbd><kbd>Space</kbd>fire <kbd>S</kbd><kbd>↓</kbd>weapon <kbd>Q</kbd>next map <kbd>M</kbd>sound',
+    aria: 'Game view, one player. W or Up thrusts, A and D or Left and Right turn, left Shift or Space fires.',
   },
   practice: {
     sub: 'One ship, empty space, just the walls. Try the physics.', restart: 'Reset ship <kbd>R</kbd>', name: 'Practice',
-    keys: '<kbd>W</kbd><kbd>↑</kbd>thrust <kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd>turn <kbd>L Shift</kbd><kbd>-</kbd>fire <kbd>S</kbd><kbd>↓</kbd>weapon <kbd>R</kbd>reset <kbd>M</kbd>sound',
-    aria: 'Practice view. One ship in an empty arena. W or Up thrusts, A and D or Left and Right turn, left Shift or minus fires, R resets the ship.',
+    keys: '<kbd>W</kbd><kbd>↑</kbd>thrust <kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd>turn <kbd>L Shift</kbd><kbd>Space</kbd>fire <kbd>S</kbd><kbd>↓</kbd>weapon <kbd>R</kbd>reset <kbd>M</kbd>sound',
+    aria: 'Practice view. One ship in an empty arena. W or Up thrusts, A and D or Left and Right turn, left Shift or Space fires, R resets the ship.',
   },
 };
 export function applyLayout() { stage.dataset.split = singleView() ? 'single' : P.split; }

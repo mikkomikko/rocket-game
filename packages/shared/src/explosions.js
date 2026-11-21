@@ -1,4 +1,5 @@
-import { isPractice, P, PR, WEAPONS } from './config.js';
+import { isPractice, P, PR, SHARD_IDX, WEAPONS } from './config.js';
+import { B, spawnBullet } from './bullets.js';
 import { carve } from './level/mask.js';
 import { simEvent } from './events.js';
 import { mapRules } from './maps.js';
@@ -38,10 +39,26 @@ function bigBlast(x, y, kind, owner, direct) {
   }
   simEvent('blast', x, y, kind);
 }
+// A frag grenade bursts: shards fly out every way at once, evenly spaced with a little seeded jitter.
+// Each is a bullet of its own (SHARD_IDX) that hits whatever it meets, the grenade's owner excepted.
+function fragBurst(x, y, kind, owner) {
+  const f = WEAPONS[kind].frag;
+  const a0 = random() * Math.PI * 2;
+  for (let k = 0; k < f.n; k++) {
+    const a = a0 + (k + (random() - 0.5) * 0.7) * Math.PI * 2 / f.n;
+    const sp = P.bulletSpeed * f.speed * (0.75 + random() * 0.5);
+    const i = spawnBullet(owner, x, y, Math.cos(a) * sp, Math.sin(a) * sp, P.bulletLife * f.life * (0.7 + random() * 0.6), SHARD_IDX);
+    if (i >= 0) B.seq[i] = 0;   // not a shot the player fired: online play must not mistake it for one
+  }
+  simEvent('fragBurst', x, y, owner);
+}
 // A shot hits terrain (kind = weapon index). simEvent 'explosion' comes first, while the rock is still there.
 export function explode(x, y, kind = 0, owner = -1, direct = null) {
   simEvent('explosion', x, y, kind);
-  if (WEAPONS[kind]?.blast) bigBlast(x, y, kind, owner, direct);
-  else if (mapRules().breakAt) mapRules().breakAt(x, y);   // Floors walls can't be shot; only the orange blocks break
-  else if (P.destructible) carve(x, y, P.holeRadius);
+  const wp = WEAPONS[kind];
+  if (wp?.blast) bigBlast(x, y, kind, owner, direct);
+  if (wp?.frag) fragBurst(x, y, kind, owner);
+  if (wp?.blast) return;
+  if (mapRules().breakAt) mapRules().breakAt(x, y);   // Floors walls can't be shot; only the orange blocks break
+  else if (P.destructible) carve(x, y, P.holeRadius * (wp?.hole || 1));   // a shard chips a smaller hole
 }

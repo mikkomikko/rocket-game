@@ -6,7 +6,7 @@ import { quietly, simEvent } from '@rocket-duel/shared/events.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { canFire, moveShip } from '@rocket-duel/shared/ships/physics.js';
 import { cycleWeapon, fire } from '@rocket-duel/shared/ships/weapons.js';
-import { B, BULLET_SLOTS, MAXB, onPredictedShot, PREDICTED_SLOTS, steerBullet } from '@rocket-duel/shared/bullets.js';
+import { accelBullet, B, BULLET_SLOTS, MAXB, onPredictedShot, PREDICTED_SLOTS, steerBullet } from '@rocket-duel/shared/bullets.js';
 import { applyShips, BULLET_ROW, decodeArgs } from '@rocket-duel/shared/net.js';
 import { setMode } from '../game/modes.js';
 import { activeMap } from '../maps/index.js';
@@ -56,15 +56,15 @@ export function roomLink(room) {
 
 /* Connecting, and reconnecting after a dropped connection. The welcome brings a token that takes back the
  * same seat (and score); it is kept per tab, so reloading the page rejoins too. */
-const conn = { room: null, map: null, skins: null, token: null, tries: 0, timer: 0, done: false, lostAt: 0 };
+const conn = { room: null, map: null, skins: null, designs: null, token: null, tries: 0, timer: 0, done: false, lostAt: 0 };
 const RETRY_FOR = 25;   // seconds of retrying before giving up (the server holds the seat for 30)
 const tokenKey = (room) => `rocket-duel-token-${room}`;
 // True when this tab already has a seat in that room (it reloaded): it can rejoin without asking.
 export function hasSeat(room) { try { return !!sessionStorage.getItem(tokenKey(room)); } catch { return false; } }
 
 // room: a room's name to join, or null to start one on map.
-export function connect({ room = null, map = 'cave', skins }) {
-  Object.assign(conn, { room, map, skins, tries: 0, done: false, lostAt: 0 });
+export function connect({ room = null, map = 'cave', skins, designs }) {
+  Object.assign(conn, { room, map, skins, designs, tries: 0, done: false, lostAt: 0 });
   try { conn.token = room ? sessionStorage.getItem(tokenKey(room)) : null; } catch { conn.token = null; }
   net.online = true;
   stage.dataset.online = '';
@@ -189,11 +189,11 @@ function welcome(m) {
   setMode('duel', true);   // builds the server's map from its seed (and switches to the single view)
   boxes.length = 0;        // the first snapshot brings the server's boxes
   for (const [x, y, r] of m.carves) carve(x, y, r);
-  // Your colour is your first skin, wherever you sit; the opponent gets your second.
-  const [mine, theirs] = conn.skins;
-  applySkins(m.id === 0 ? [mine, theirs] : [theirs, mine]);
+  // Your colour and ship are your first skin, wherever you sit; the opponent gets your second.
+  const [mine, theirs] = conn.skins, [myShip, theirShip] = conn.designs ?? [];
+  applySkins(m.id === 0 ? [mine, theirs] : [theirs, mine], m.id === 0 ? [myShip, theirShip] : [theirShip, myShip]);
   document.querySelector('.sub').textContent = `Online: you are Player ${m.id + 1} in game ${m.room}. Steer with WASD or the arrows.`;
-  const keys = '<kbd>W</kbd><kbd>↑</kbd>thrust <kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd>turn <kbd>L Shift</kbd><kbd>-</kbd>fire <kbd>S</kbd><kbd>↓</kbd>weapon <kbd>M</kbd>sound';
+  const keys = '<kbd>W</kbd><kbd>↑</kbd>thrust <kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd>turn <kbd>L Shift</kbd><kbd>Space</kbd>fire <kbd>S</kbd><kbd>↓</kbd>weapon <kbd>M</kbd>sound';
   for (const el of document.querySelectorAll('.hud-keys')) el.innerHTML = keys;
   card.state = null;
   showCard();
@@ -343,7 +343,7 @@ export function netStep(h) {
   for (let i = 0; i < BULLET_SLOTS; i++) {
     if (!B.on[i]) continue;
     if (WEAPONS[B.kind[i]].homing) steerBullet(i, h);   // missiles keep chasing the other ship
-    B.vy[i] -= P.gravity * P.bulletGravity * WEAPONS[B.kind[i]].grav * h;
+    accelBullet(i, WEAPONS[B.kind[i]], h);   // gravity, and a frag grenade's drag
     B.x[i] += B.vx[i] * h; B.y[i] += B.vy[i] * h;
     // A predicted shot stops at walls and when its time runs out; the server's copy of it then stays hidden.
     if (i >= MAXB && ((B.life[i] -= h) <= 0 || solidAt(B.x[i], B.y[i]))) { hidden.add(B.seq[i]); endShot(i); }

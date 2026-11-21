@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { game } from '@rocket-duel/shared/state.js';
 import { onSim } from '@rocket-duel/shared/events.js';
-import { boxes, CROSS_TIME, HEALTH_GAIN } from '@rocket-duel/shared/boxes.js';
+import { boxes, HEALTH_GAIN } from '@rocket-duel/shared/boxes.js';
 import { glowMat, scene } from '../render/scene.js';
 import { WHITE } from '../fx/pools.js';
 import { emit } from '../fx/particles.js';
@@ -11,9 +11,9 @@ import { canvasTex } from '../maps/floors/floors.js';
  * Supply boxes as the player sees them: a glowing crate per box in @rocket-duel/shared/boxes.js
  * (which runs them), bobbing gently, with sparkles when one appears or is taken.
  * ------------------------------------------------------------------ */
-const GLOW = { ammo: '#ffcc33', health: '#5dff8a', cross: '#6ee7ff' };
+const GLOW = { ammo: '#ffcc33', health: '#5dff8a' };
 const SPARK = Object.fromEntries(Object.entries(GLOW).map(([k, hex]) => [k, new THREE.Color(hex)]));
-const TAKEN_TEXT = { ammo: 'Ammo refilled!', health: `+${HEALTH_GAIN} health!`, cross: `Crosshair for ${CROSS_TIME} s!` };
+const TAKEN_TEXT = { ammo: 'Ammo refilled!', health: `+${HEALTH_GAIN} health!` };
 const boxTex = {
   ammo: canvasTex(64, 64, (g) => {
     g.fillStyle = '#4f5d3a'; g.fillRect(0, 0, 64, 64);
@@ -27,15 +27,6 @@ const boxTex = {
     g.fillStyle = '#2f9c55'; g.fillRect(0, 0, 64, 64);
     g.fillStyle = '#f7f8fb'; g.fillRect(5, 5, 54, 54);
     g.fillStyle = '#e8283c'; g.fillRect(25, 12, 14, 40); g.fillRect(12, 25, 40, 14);
-  }),
-  cross: canvasTex(64, 64, (g) => {
-    g.fillStyle = '#1b2a4a'; g.fillRect(0, 0, 64, 64);
-    g.strokeStyle = '#3d5d8f'; g.lineWidth = 6; g.strokeRect(3, 3, 58, 58);
-    g.strokeStyle = '#6ee7ff'; g.lineWidth = 4;
-    g.beginPath(); g.arc(32, 32, 13, 0, Math.PI * 2); g.stroke();
-    g.beginPath(); g.moveTo(32, 10); g.lineTo(32, 22); g.moveTo(32, 42); g.lineTo(32, 54);
-    g.moveTo(10, 32); g.lineTo(22, 32); g.moveTo(42, 32); g.lineTo(54, 32); g.stroke();
-    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(32, 32, 3, 0, Math.PI * 2); g.fill();
   }),
 };
 const BOX_GROUP = new THREE.Group();

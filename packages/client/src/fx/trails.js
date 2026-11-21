@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { MISSILE_IDX, WEAPONS } from '@rocket-duel/shared/config.js';
+import { FRAG_IDX, MISSILE_IDX, SHARD_IDX, WEAPONS } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { scene } from '../render/scene.js';
-import { HEAVY_COL, ICE_COL, MISSILE_COL } from './pools.js';
+import { FRAG_COL, HEAVY_COL, ICE_COL, MISSILE_COL, SHARD_COL } from './pools.js';
 import { B, BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
 import { ENEMY_RED } from '../maps/starship/constants.js';
 import { views } from '../ships/view.js';
@@ -26,7 +26,8 @@ const trailMesh = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ vertexC
 trailMesh.frustumCulled = false;
 trailMesh.position.z = 1.9;
 scene.add(trailMesh);
-export const bulletColor = (i) => B.owner[i] >= 2 ? ENEMY_RED : B.kind[i] === 1 ? HEAVY_COL : B.kind[i] === 2 ? ICE_COL : B.kind[i] === MISSILE_IDX ? MISSILE_COL : views[B.owner[i]].color;
+export const bulletColor = (i) => B.owner[i] >= 2 ? ENEMY_RED : B.kind[i] === 1 ? HEAVY_COL : B.kind[i] === 2 ? ICE_COL : B.kind[i] === MISSILE_IDX ? MISSILE_COL
+  : B.kind[i] === FRAG_IDX ? FRAG_COL : B.kind[i] === SHARD_IDX ? SHARD_COL : views[B.owner[i]].color;
 // Drop a trail piece from the bullet's last trail point to where it is now (always when it ends, so the trail reaches the impact).
 export function trailPoint(i, end) {
   const dx = B.x[i] - B.tx[i], dy = B.y[i] - B.ty[i], d2 = dx * dx + dy * dy;

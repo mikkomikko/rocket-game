@@ -16,8 +16,7 @@ import { playAgain, victoryOpen } from './ui/victory.js';
  * ------------------------------------------------------------------ */
 const KEYMAP = [
   { left: ['KeyA'], right: ['KeyD'], thrust: ['KeyW'], fire: ['ShiftLeft'] },
-  // "-" sits at a different physical key per layout: beside right Shift on Nordic/German (Slash), beside Backspace on US (Minus).
-  { left: ['ArrowLeft'], right: ['ArrowRight'], thrust: ['ArrowUp'], fire: ['Slash', 'Minus', 'NumpadSubtract'] },
+  { left: ['ArrowLeft'], right: ['ArrowRight'], thrust: ['ArrowUp'], fire: ['Space'] },
 ];
 const GAME_CODES = new Set(KEYMAP.flatMap((m) => Object.values(m).flat()));
 export const keysDown = new Set();
@@ -99,5 +98,5 @@ export function readInputs() {
   for (let i = 0; i < pads.length; i++) if (pads[i]) padsSeen.push(`Gamepad ${i + 1}: ${pads[i].id.replace(/\s*\(.*\)\s*/g, ' ').trim().slice(0, 30)}`);
 }
 
-const KEY_NAMES = { Space: 'Space', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', NumpadEnter: 'Enter', Numpad0: 'Num 0', ShiftLeft: 'L Shift', Slash: '-', Minus: '-', NumpadSubtract: '-' };
+const KEY_NAMES = { Space: 'Space', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', NumpadEnter: 'Enter', Numpad0: 'Num 0', ShiftLeft: 'L Shift' };
 export const prettyKey = (c) => KEY_NAMES[c] || c.replace(/^Key/, '').replace(/^Digit/, '');

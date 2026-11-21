@@ -36,9 +36,10 @@ export function spawnBullet(owner, x, y, vx, vy, life, kind = 0) {
       B.tx[i] = x; B.ty[i] = y; B.tt[i] = game.time;
       B.seq[i] = owner < 2 ? ships[owner].inputSeq || 0 : 0;
       B.cursor = (i + 1) % MAXB;
-      return;
+      return i;
     }
   }
+  return -1;
 }
 export function clearBullets() { B.on.fill(0); simEvent('bulletsCleared'); }
 
@@ -48,6 +49,13 @@ export function steerBullet(i, h) {
   mis.x = B.x[i]; mis.y = B.y[i]; mis.vx = B.vx[i]; mis.vy = B.vy[i];
   steerMissile(mis, missileTarget(B.owner[i]), h);
   B.vx[i] = mis.vx; B.vy[i] = mis.vy;
+}
+
+// Gravity, and drag for a frag grenade (grows with speed², so it bites at launch and fades as the grenade slows).
+// The browser runs this for its predicted shots too.
+export function accelBullet(i, wp, h) {
+  if (wp.drag) { const k = 1 / (1 + wp.drag * Math.hypot(B.vx[i], B.vy[i]) * h); B.vx[i] *= k; B.vy[i] *= k; }
+  B.vy[i] -= P.gravity * P.bulletGravity * wp.grav * h;
 }
 
 // Moves every bullet one step. When one stops, simEvent('bulletEnd', i) lets the client finish its trail.
@@ -60,12 +68,12 @@ export function stepBullets(h) {
     if (B.life[i] <= 0) {
       B.on[i] = 0;
       simEvent('bulletEnd', i);
-      if (wp.blast) explode(B.x[i], B.y[i], kind, B.owner[i]);   // a Cannon shell's fuse or a missile's fuel runs out
+      if (wp.blast) explode(B.x[i], B.y[i], kind, B.owner[i]);   // a Cannon shell's or frag grenade's fuse, or a missile's fuel, runs out
       else if (kind === 2) simEvent('iceBurst', B.x[i], B.y[i], 6);
       continue;
     }
     if (wp.homing) steerBullet(i, h);
-    B.vy[i] -= P.gravity * P.bulletGravity * wp.grav * h;
+    accelBullet(i, wp, h);
     const dx = B.vx[i] * h, dy = B.vy[i] * h;
     const n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 2));
     outer:
@@ -74,6 +82,7 @@ export function stepBullets(h) {
       const x = B.x[i], y = B.y[i];
       if (solidAt(x, y) || map.blocksShot?.(x, y)) {
         if (kind === 2) simEvent('iceBurst', x, y, 10);
+        else if (wp.frag) explode(x - dx / n, y - dy / n, kind, B.owner[i]);   // from just outside the rock
         else explode(x, y, kind, B.owner[i]);
         B.on[i] = 0; break;
       }
@@ -93,7 +102,9 @@ export function stepBullets(h) {
           if (kind === 0) simEvent('sound', 'hit', x, y);
           damage(s, P.bulletDamage * wp.damage);
           if (kind === 2) freezeShip(s);
-          if (wp.blast) explode(x, y, kind, B.owner[i], s);
+          // A frag grenade goes off just in front of the ship, so only the shards flying its way hit it.
+          if (wp.frag) explode(x - B.vx[i] / sp * (r + 4), y - B.vy[i] / sp * (r + 4), kind, B.owner[i], s);
+          else if (wp.blast) explode(x, y, kind, B.owner[i], s);
           simEvent('shipHit', x, y, s, kind);
           B.on[i] = 0;
           break outer;

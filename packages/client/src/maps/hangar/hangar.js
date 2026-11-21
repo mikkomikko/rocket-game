@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { mulberry32 } from '@rocket-duel/shared/math.js';
 import { H, level, W } from '@rocket-duel/shared/level/mask.js';
 import { HANGAR_SHIPS } from '@rocket-duel/shared/level/terrain.js';
 import { glowMat } from '../../render/scene.js';
@@ -33,20 +32,6 @@ export function hPoly(pts, mat, z, dx = 0, dy = 0) {
   return m;
 }
 export const bmat = (hex) => new THREE.MeshBasicMaterial({ color: hex, side: THREE.DoubleSide });
-// Weathering for the droid, drawn once: grime streaks running down, rust specks and light scratches.
-export const grimeTex = canvasTex(128, 128, (g) => {
-  const r = mulberry32(77);
-  for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(22,17,10,${(0.05 + r() * 0.13).toFixed(3)})`; g.fillRect(r() * 128, r() * 128, 2 + r() * 7, 10 + r() * 44); }
-  for (let i = 0; i < 45; i++) { g.fillStyle = `rgba(125,62,28,${(0.12 + r() * 0.22).toFixed(3)})`; g.beginPath(); g.arc(r() * 128, r() * 128, 0.8 + r() * 2.6, 0, 7); g.fill(); }
-  g.strokeStyle = 'rgba(255,248,230,0.2)'; g.lineWidth = 1;
-  for (let i = 0; i < 28; i++) { const x = r() * 128, y = r() * 128; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 22, y + (r() - 0.5) * 8); g.stroke(); }
-});
-export const stencilTex = canvasTex(128, 40, (g) => {
-  g.fillStyle = 'rgba(30,26,20,0.75)'; g.font = 'bold 30px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText('KR-07', 64, 22);
-});
-export const rivetGeo = new THREE.CircleGeometry(2.2, 8);
-
 export function buildHangar() {
   const sp = level.spec;
   const back = new THREE.Mesh(new THREE.PlaneGeometry(W - 80, H - 112), backWallMat);

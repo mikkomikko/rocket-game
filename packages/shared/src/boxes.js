@@ -6,7 +6,7 @@ import { random } from './random.js';
 import { ships } from './ships/ship.js';
 
 /* ------------------------------------------------------------------ *
- * Floating supply boxes on every map: ammo (and the missiles back), health (+50) and crosshair (30 s).
+ * Floating supply boxes on every map: ammo (and the missiles back), and health (+50).
  * They hang in open air that both players can reach and come back at a new spot a while after they
  * are taken. If a player runs dry, or every ammo box is gone, new ammo boxes appear right away.
  * State only; the client draws them (systems/boxes.js) and hears:
@@ -14,8 +14,8 @@ import { ships } from './ships/ship.js';
  *   boxPlaced(i, sparkle)           box i appeared at a new spot (sparkle: it popped in during play)
  *   boxTaken(s, kind, x, y)         ship s took a box of that kind at (x, y)
  * ------------------------------------------------------------------ */
-export const CROSS_TIME = 30, HEALTH_GAIN = 50;
-export const BOX_KINDS = { ammo: { n: 3, back: 12 }, health: { n: 2, back: 20 }, cross: { n: 1, back: 25 } };
+export const HEALTH_GAIN = 50;
+export const BOX_KINDS = { ammo: { n: 3, back: 12 }, health: { n: 2, back: 20 } };
 export const KIND_IDS = Object.keys(BOX_KINDS);
 export const boxes = [];   // { kind, x, y, on, t }: t counts down to the box's return while it is off
 let spots = [];
@@ -96,10 +96,8 @@ export function resetBoxes() {
   }
   simEvent('boxesReset');
   for (let i = 0; i < boxes.length; i++) placeBox(i, null, false);
-  for (const s of ships) s.crossT = 0;
 }
 export function stepBoxes(h) {
-  for (const s of ships) if (s.crossT > 0) s.crossT = Math.max(0, s.crossT - h);
   boxes.forEach((b, i) => {
     if (!b.on) { b.t -= h; if (b.t <= 0) placeBox(i, null, true); return; }
     for (const s of ships) {
@@ -109,11 +107,9 @@ export function stepBoxes(h) {
         if (s.ammo >= P.ammoMax - 0.5 && s.missiles >= MISSILES) continue;
         s.ammo = P.ammoMax;
         s.missiles = MISSILES;
-      } else if (b.kind === 'health') {
+      } else {
         if (s.hp >= 99.5) continue;
         s.hp = Math.min(100, s.hp + HEALTH_GAIN);
-      } else {
-        s.crossT = CROSS_TIME;
       }
       b.on = false; b.t = BOX_KINDS[b.kind].back;
       simEvent('boxTaken', s, b.kind, b.x, b.y);
