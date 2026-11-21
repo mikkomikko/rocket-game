@@ -1,4 +1,4 @@
-import { P } from '../config.js';
+import { MISSILES, P } from '../config.js';
 import { solidAt } from '../level/mask.js';
 
 /* ------------------------------------------------------------------ *
@@ -14,12 +14,14 @@ function makeShip(id) {
     x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, a: 0, pa: 0, av: 0, thrust: 0,
     hp: 100, ammo: P.ammoMax, landed: false, onPad: false, alive: true,
     respawnT: 0, invulnT: 0, fireCd: 0, score: 0, deathX: 0, deathY: 0, active: true, lastImpact: 0,
-    weapon: 0, frozenT: 0, crossT: 0, ballT: 0,
+    weapon: 0, frozenT: 0, crossT: 0, bigLaser: 1, missiles: MISSILES,
     input: { turn: 0, thrust: 0, fire: false },
     inputSeq: 0,   // online: the number of the input being applied (it tags the shots it fires)
   };
 }
 export const ships = [makeShip(0), makeShip(1)];
+// A new match: one Big laser shot and a full set of missiles each.
+export function armForMatch(s) { s.bigLaser = 1; s.missiles = MISSILES; s.beam = null; }
 
 const HW = HULL.map(() => [0, 0]);
 export function hullWorld(s, dx = 0, dy = 0) {

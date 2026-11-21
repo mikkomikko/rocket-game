@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BALL_COLOR, FREEZE_COLOR, WEAPONS } from '@rocket-duel/shared/config.js';
+import { FREEZE_COLOR, MISSILE_COLOR, WEAPONS } from '@rocket-duel/shared/config.js';
 import { scene } from '../render/scene.js';
 import { BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
 
@@ -7,7 +7,7 @@ import { BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
  * Bullets and particles (fixed pools, drawn as THREE.Points)
  * ------------------------------------------------------------------ */
 export const FIRE = new THREE.Color('#ff8f3d'), EMBER = new THREE.Color('#ffd166'), WHITE = new THREE.Color('#ffffff');
-export const ICE_COL = new THREE.Color(FREEZE_COLOR), HEAVY_COL = new THREE.Color(WEAPONS[1].color), BALL_COL = new THREE.Color(BALL_COLOR);
+export const ICE_COL = new THREE.Color(FREEZE_COLOR), HEAVY_COL = new THREE.Color(WEAPONS[1].color), MISSILE_COL = new THREE.Color(MISSILE_COLOR);
 export const DUST = new THREE.Color();
 
 // Soft, round, additive points sized in world units (bullets and particles).

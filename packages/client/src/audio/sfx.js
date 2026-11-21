@@ -135,7 +135,14 @@ export const sfx = (() => {
       const t = now(), v = near(x, y);
       tone('sine', 3100 + Math.random() * 600, 2600, t, 0.12, voice(t, 0.06 * v, 0.001, 0.12, 0.25));
     },
-    blast(x, y) { if (ready('blast', 0.06)) boom(x, y, 1); },
+    blast(x, y, big = 1) { if (ready('blast', 0.06)) boom(x, y, big); },
+    // Missile launch: a pop, then a rising rocket hiss.
+    missile(s) {
+      if (!ready('missile' + s.id, 0.1)) return;
+      const t = now(), v = near(s.x, s.y);
+      tone('sine', 220, 70, t, 0.12, voice(t, 0.3 * v, 0.002, 0.12, 0.15));
+      noise(t, 0.7, voice(t, 0.16 * v, 0.08, 0.6, 0.3), 'bandpass', 700, 2600, 1.2);
+    },
     // A round striking a ship: a short metallic clank.
     hit(x, y) {
       if (!ready('hit', 0.04)) return;

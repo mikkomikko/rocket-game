@@ -17,15 +17,17 @@ import { RULES } from './maps/index.js';
  *     { t: 'replaced' }                 your seat was taken back by a newer connection with your token
  *     { t: 'noroom' }                   no room by that name (it ended, or the link is wrong)
  *     { t: 'error', text }              the server can't start a room
- *     { t: 'snap', ships, bullets, boxes, map, events, acks }   about 30 times a second; acks[id] is
+ *     { t: 'snap', ships, bullets, boxes, map, winner, events, acks }   about 30 times a second; acks[id] is
  *                                       the last input the server has applied to ship id; boxes: supply
- *                                       boxes; map: the map rules' state (their encode())
+ *                                       boxes; map: the map rules' state (their encode()); winner: the
+ *                                       ship that won the match, or -1 (game.winner)
  *   browser → server
  *     { t: 'input', seq, list }        one input per simulation step, [turn, thrust, fire, cycle], numbered
  *                                      from seq. The server applies them in order, one per step; cycle (1)
  *                                      switches weapon at that step, so the browser can predict the switch.
  *     { t: 'map', action }              a map control (Starship: choose a level, restart): the server
  *                                       passes it to the map rules' action(ship, action)
+ *     { t: 'rematch' }                  the match is won: start the next one (scores to 0, ships to their pads)
  *
  * events is everything that happened since the last snap, in order: [type, ...args] for simulation
  * events (ships travel as { ship: id }), and ['carve', x, y, r] for craters.
@@ -36,8 +38,8 @@ export const SNAP_EVERY = 4;   // simulation steps per snapshot (120 Hz / 4 = 30
 export const ONLINE_MAPS = Object.keys(MAPS).filter((k) => !MAPS[k].theme || RULES[MAPS[k].theme]);
 
 const SHIP_FIELDS = ['x', 'y', 'vx', 'vy', 'a', 'av', 'thrust', 'hp', 'ammo', 'landed', 'onPad', 'alive', 'active',
-  'respawnT', 'invulnT', 'score', 'deathX', 'deathY', 'lastImpact', 'weapon', 'frozenT', 'crossT', 'ballT', 'minigunT',
-  'bigLaser', 'eaten', 'lava', 'fireCd'];
+  'respawnT', 'invulnT', 'score', 'deathX', 'deathY', 'lastImpact', 'weapon', 'frozenT', 'crossT', 'minigunT',
+  'bigLaser', 'missiles', 'eaten', 'lava', 'fireCd'];
 const BEAM_FIELDS = ['phase', 't', 'len', 'ox', 'oy', 'ang'];
 const pick = (o, fields) => fields.map((f) => o[f] ?? null);
 const put = (o, fields, vals) => fields.forEach((f, i) => { o[f] = vals[i]; });

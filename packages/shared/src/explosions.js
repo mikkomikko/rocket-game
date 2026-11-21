@@ -8,16 +8,16 @@ import { addShake, damage, shipMass } from './ships/physics.js';
 
 // Hits that dig, freeze and blast: what a shot does where it lands.
 export function freezeShip(s) {
-  if (!s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage) || s.ballT > 0) return;
+  if (!s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage)) return;
   s.frozenT = WEAPONS[2].freeze;
   s.thrust = 0; s.av = 0;
   simEvent('frozen', s);
   addShake(s, 0.4);
 }
-// The Cannon shell: a big crater, splash damage and a shove for any ship nearby.
-function bigBlast(x, y, owner, direct) {
-  const wp = WEAPONS[1], map = mapRules();
-  if (map.breakAt) { for (let k = 0; k < 6; k++) map.breakAt(x + (random() - 0.5) * 30, y + (random() - 0.5) * 30); }
+// A Cannon shell or a missile (kind): a big crater, splash damage and a shove for any ship nearby.
+function bigBlast(x, y, kind, owner, direct) {
+  const wp = WEAPONS[kind], map = mapRules(), big = wp.blast / 64;
+  if (map.breakAt) { for (let k = 0, n = kind === 1 ? 6 : 3; k < n; k++) map.breakAt(x + (random() - 0.5) * 30, y + (random() - 0.5) * 30); }
   else if (P.destructible) carve(x, y, P.holeRadius * wp.hole);
   const R = wp.blast;
   for (const s of ships) {
@@ -27,21 +27,21 @@ function bigBlast(x, y, owner, direct) {
     if (d > R) continue;
     const f = 1 - d / R;   // falloff; your own ship takes half
     damage(s, P.bulletDamage * wp.damage * 0.6 * f * (s.id === owner ? 0.5 : 1));
-    const m = shipMass(s), push = 260 * f / m;
+    const m = shipMass(s), push = (wp.push ?? 260) * f / m;
     s.vx += (ddx / (d || 1)) * push; s.vy += (ddy / (d || 1)) * push;
     s.landed = false;
   }
   map.blastHit?.(x, y, R, owner, P.bulletDamage * wp.damage * 0.5);
   for (const s of ships) if (s.active && s.alive) {
     const d = Math.hypot(s.x - x, s.y - y);
-    if (d < 500) addShake(s, 1.1 * (1 - d / 500));
+    if (d < 500) addShake(s, 1.1 * big * (1 - d / 500));
   }
-  simEvent('blast', x, y);
+  simEvent('blast', x, y, kind);
 }
 // A shot hits terrain (kind = weapon index). simEvent 'explosion' comes first, while the rock is still there.
 export function explode(x, y, kind = 0, owner = -1, direct = null) {
   simEvent('explosion', x, y, kind);
-  if (kind === 1) bigBlast(x, y, owner, direct);
+  if (WEAPONS[kind]?.blast) bigBlast(x, y, kind, owner, direct);
   else if (mapRules().breakAt) mapRules().breakAt(x, y);   // Floors walls can't be shot; only the orange blocks break
   else if (P.destructible) carve(x, y, P.holeRadius);
 }

@@ -1,12 +1,14 @@
 import { isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { stage } from '../render/scene.js';
-import { ships } from '@rocket-duel/shared/ships/ship.js';
+import { armForMatch, ships } from '@rocket-duel/shared/ships/ship.js';
 import { respawn } from '@rocket-duel/shared/ships/physics.js';
 import { clearBullets } from '@rocket-duel/shared/bullets.js';
 import { DB } from '../fx/debris.js';
 import { PT } from '../fx/particles.js';
 import { resetBoxes } from '@rocket-duel/shared/boxes.js';
+import { resetMatchScore } from '@rocket-duel/shared/victory.js';
+import { cpuPlays, resetCpu } from '@rocket-duel/shared/cpu.js';
 import { closePicker, updateMapButton } from '../ui/mapPicker.js';
 import { fLevel, fPractice } from '../ui/tuningPanel.js';
 import { activeMap, applyTheme } from '../maps/index.js';
@@ -17,11 +19,13 @@ import { singleView } from '../render/camera.js';
 // Match flow: restart, rebuild the map, and switch between duel, solo and practice.
 export function restartMatch() {
   game.matchClock = 0;
-  for (const s of ships) { s.bigLaser = 1; s.beam = null; }   // a new match: one Big laser shot each
-  for (const s of ships) { s.score = 0; respawn(s); }
+  for (const s of ships) armForMatch(s);
+  resetMatchScore();
+  resetCpu();
+  for (const s of ships) respawn(s);
   activeMap().reset?.();
   resetBoxes();
-  if (isSolo()) deactivate(ships[1]);
+  if (isSolo() && !cpuPlays()) deactivate(ships[1]);
   clearBullets();
   PT.on.fill(0); DB.on.fill(0);
 }
@@ -38,10 +42,10 @@ export function buildLevel() {
 }
 export function rebuildCave() {
   game.matchClock = 0;
-  for (const s of ships) { s.bigLaser = 1; s.beam = null; }
+  for (const s of ships) armForMatch(s);
   buildLevel();
   for (const s of ships) respawn(s);
-  if (isSolo()) deactivate(ships[1]);
+  if (isSolo() && !cpuPlays()) deactivate(ships[1]);
   clearBullets();
   PT.on.fill(0); DB.on.fill(0);
 }
@@ -54,7 +58,7 @@ const MODE_TEXT = {
     aria: 'Game view. Player 1 uses W, A, D and left Shift. Player 2 uses the arrow keys and the minus key.',
   },
   solo: {
-    sub: 'One ship, your pick of map.', restart: 'Restart match', name: 'Player 1',
+    sub: 'You against a computer pilot, on your pick of map.', restart: 'Restart match', name: 'You',
     keys: '<kbd>W</kbd><kbd>↑</kbd>thrust <kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd>turn <kbd>L Shift</kbd><kbd>-</kbd>fire <kbd>S</kbd><kbd>↓</kbd>weapon <kbd>Q</kbd>next map <kbd>M</kbd>sound',
     aria: 'Game view, one player. W or Up thrusts, A and D or Left and Right turn, left Shift or minus fires.',
   },

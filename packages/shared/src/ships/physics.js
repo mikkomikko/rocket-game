@@ -1,15 +1,16 @@
-import { BALL_MASS, DEG, isPractice, P, PR, WEAPONS } from '../config.js';
+import { DEG, isPractice, P, PR, WEAPONS } from '../config.js';
 import { approach, wrapAngle } from '../math.js';
 import { game } from '../state.js';
 import { carve, H, level, maskAt, solidAt } from '../level/mask.js';
 import { simEvent } from '../events.js';
 import { mapRules } from '../maps.js';
-import { hullSolid, hullWorld, ships } from './ship.js';
-import { fire, shipR, stepBall } from './weapons.js';
+import { scorePoint } from '../victory.js';
+import { hullSolid, hullWorld, SHIP_RADIUS, ships } from './ship.js';
+import { fire } from './weapons.js';
 import { stepBigLaser } from './bigLaser.js';
 
 // Ship physics: mass, landing, damage and respawn, terrain collision and ship-vs-ship bumps.
-export const shipMass = (s) => P.mass + s.ammo * P.ammoWeight + (s.ballT > 0 ? BALL_MASS : 0);
+export const shipMass = (s) => P.mass + s.ammo * P.ammoWeight;
 
 export function normalAt(x, y, s) {
   let nx = 0, ny = 0;
@@ -42,7 +43,7 @@ function supported(s) {
 export function addShake(s, amount) { simEvent('shake', s, amount); }
 
 export function damage(s, amount) {
-  if (game.predicting || !s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage) || mapRules().shipsSafe?.()) return;
+  if (game.predicting || game.winner >= 0 || !s.alive || s.invulnT > 0 || (isPractice() && PR.noDamage) || mapRules().shipsSafe?.()) return;
   s.hp -= amount;
   addShake(s, Math.min(1, amount / 30));
   if (s.hp <= 0) { s.hp = 0; kill(s); }
@@ -52,13 +53,12 @@ export function kill(s, eaten = false) {
   s.minigunT = 0;
   s.beam = null;   // a beam in progress stops, but a used Big laser does not come back
   s.frozenT = 0;
-  s.ballT = 0;
   s.alive = false;
   s.respawnT = P.respawnTime;
   s.deathX = s.x; s.deathY = s.y;
   s.thrust = 0;
   const other = ships[1 - s.id];
-  if (!isPractice() && !mapRules().coop) other.score++;   // in Floors and Starship you score another way
+  if (!isPractice() && !mapRules().coop) scorePoint(other);   // in Floors and Starship you score another way
   mapRules().onKill?.(s);
   const how = eaten === true ? 'eaten' : (eaten || '');
   s.eaten = how === 'eaten';
@@ -74,7 +74,7 @@ export function respawn(s) {
   s.px = s.x; s.py = s.y;
   s.vx = 0; s.vy = 0; s.a = 0; s.pa = 0; s.av = 0; s.thrust = 0;
   s.hp = 100; s.ammo = P.ammoMax;
-  s.landed = !air; s.onPad = !isPractice(); s.alive = true; s.active = true; s.lastImpact = 0; s.eaten = false; s.lava = false; s.minigunT = 0; s.frozenT = 0; s.ballT = 0;
+  s.landed = !air; s.onPad = !isPractice(); s.alive = true; s.active = true; s.lastImpact = 0; s.eaten = false; s.lava = false; s.minigunT = 0; s.frozenT = 0;
   mapRules().onRespawn?.(s);
   s.invulnT = P.invulnTime; s.fireCd = 0.2;
   simEvent('respawned', s);
@@ -123,8 +123,6 @@ export function moveShip(s, h) {
   s.fireCd -= h;
   if (s.minigunT > 0) s.minigunT = Math.max(0, s.minigunT - h);
   const inp = s.input;
-
-  if (s.ballT > 0) { stepBall(s, h); return false; }
 
   if (s.frozenT > 0) {
     // Frozen solid: no turning, thrust or firing. The ship keeps drifting with the velocity it had
@@ -187,7 +185,7 @@ export function shipVsShip() {
   const a = ships[0], b = ships[1];
   if (!a.active || !b.active || !a.alive || !b.alive) return;
   const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
-  const R = (shipR(a) + shipR(b)) * P.shipSize;
+  const R = SHIP_RADIUS * 1.8 * P.shipSize;
   if (d >= R || d < 1e-6) return;
   const nx = dx / d, ny = dy / d, overlap = R - d;
   a.x -= nx * overlap / 2; a.y -= ny * overlap / 2;

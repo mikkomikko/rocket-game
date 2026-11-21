@@ -7,7 +7,7 @@
 <link rel="preload" href="/fonts/allo.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body>
-<div class="app">
+<div class="app ui-hidden">
   <header class="bar">
     <div class="brand">
       <h1 class="title">Rocket duel</h1>
@@ -18,20 +18,21 @@
       <button class="btn" id="btnLeave" type="button">Leave game</button>
       <button class="btn" id="btnRestart" type="button">Restart match</button>
       <button class="btn" id="btnPause" type="button" aria-pressed="false">Pause <kbd>P</kbd></button>
-      <button class="btn" id="btnPanel" type="button" aria-pressed="true">Tuning <kbd>H</kbd></button>
-      <button class="btn" id="btnUI" type="button" aria-pressed="false">Hide UI <kbd>U</kbd></button>
+      <button class="btn" id="btnPanel" type="button" aria-pressed="false">Tuning <kbd>H</kbd></button>
+      <button class="btn" id="btnUI" type="button" aria-pressed="true">Hide UI <kbd>U</kbd></button>
     </div>
   </header>
-  <div class="main" id="main">
+  <div class="main panel-hidden" id="main">
     <div class="stage" id="stage" data-split="side" role="img" aria-label="Game view. Player 1 uses W, A, D and left Shift. Player 2 uses the arrow keys and the minus key.">
       <div class="vignette"></div>
       <div class="wsel" id="wsel0" aria-hidden="true"></div>
       <div class="wsel" id="wsel1" aria-hidden="true"></div>
       <div class="divider"></div>
       <button class="ui-show" id="btnShowUI" type="button">Show UI <kbd>U</kbd></button>
-      <div class="mini-hud" id="miniHud"><div class="mh-players"><div class="mh-p" data-p="0"><span class="mh-tag"></span><div class="mh-hp"><i></i></div><div class="mh-ammo"><i></i></div><span class="mh-note"></span></div><div class="mh-p" data-p="1"><span class="mh-tag"></span><div class="mh-hp"><i></i></div><div class="mh-ammo"><i></i></div><span class="mh-note"></span></div></div><div id="miniLevel"></div></div>
+      <div class="mini-hud" id="miniHud"><div class="mh-players"><div class="mh-p" data-p="0"><div class="mh-head"><span class="mh-tag"></span><span class="wins mh-wins" hidden></span></div><div class="mh-hp"><i></i></div><div class="mh-ammo"><i></i></div><span class="mh-note"></span></div><div class="mh-p" data-p="1"><div class="mh-head"><span class="mh-tag"></span><span class="wins mh-wins" hidden></span></div><div class="mh-hp"><i></i></div><div class="mh-ammo"><i></i></div><span class="mh-note"></span></div></div><div id="miniLevel"></div></div>
       <div class="hud" data-p="0">
-        <div class="hud-top"><span class="hud-name">Player 1</span><span class="hud-score">0</span></div>
+        <div class="hud-top"><span class="hud-name">Player 1</span><span class="wins hud-wins" hidden></span><span class="hud-score">0</span></div>
+        <div class="hud-opp"><span class="hud-opp-name">Opponent</span><span class="wins opp-wins" data-p="1" hidden></span></div>
         <div class="meter"><span class="meter-label">Hull</span><span class="meter-track"><span class="meter-fill hull"></span></span></div>
         <div class="meter"><span class="meter-label">Ammo</span><span class="meter-track"><span class="meter-fill ammo"></span></span></div>
         <div class="hud-status"></div>
@@ -42,7 +43,8 @@
         <div class="hud-pad"></div>
       </div>
       <div class="hud" data-p="1">
-        <div class="hud-top"><span class="hud-name">Player 2</span><span class="hud-score">0</span></div>
+        <div class="hud-top"><span class="hud-name">Player 2</span><span class="wins hud-wins" hidden></span><span class="hud-score">0</span></div>
+        <div class="hud-opp"><span class="hud-opp-name">Opponent</span><span class="wins opp-wins" data-p="0" hidden></span></div>
         <div class="meter"><span class="meter-label">Hull</span><span class="meter-track"><span class="meter-fill hull"></span></span></div>
         <div class="meter"><span class="meter-label">Ammo</span><span class="meter-track"><span class="meter-fill ammo"></span></span></div>
         <div class="hud-status"></div>
@@ -74,6 +76,14 @@
           <div class="lvl-row" id="levelRow"></div>
         </div>
       </div>
+      <div class="victory" id="victory" hidden role="dialog" aria-modal="true" aria-labelledby="victoryTitle" aria-describedby="victoryScore">
+        <canvas class="victory-stars" id="victoryStars" aria-hidden="true"></canvas>
+        <div class="victory-box">
+          <h2 class="victory-title" id="victoryTitle">Victory!</h2>
+          <p class="victory-score" id="victoryScore"></p>
+          <button class="start-go" id="victoryAgain" type="button">Play again <kbd>Enter</kbd></button>
+        </div>
+      </div>
       <div class="picker" id="picker" hidden role="dialog" aria-labelledby="pickerTitle">
         <div class="picker-box">
           <div class="picker-head"><h2 id="pickerTitle">Choose a map</h2><span class="picker-seed" id="pickerSeed"></span></div>
@@ -93,7 +103,7 @@
           <section class="start-row" id="startPlayersRow">
             <h3 class="start-label" id="lblPlayers">Players</h3>
             <div class="seg" role="group" aria-labelledby="lblPlayers">
-              <button class="seg-btn" type="button" data-players="1" aria-pressed="false"><span class="seg-ico"></span><span><b>1 player</b><small>Fly alone. WASD or the arrows steer.</small></span></button>
+              <button class="seg-btn" type="button" data-players="1" aria-pressed="false"><span class="seg-ico"></span><span><b>1 player</b><small>Against a computer pilot. WASD or the arrows steer.</small></span></button>
               <button class="seg-btn" type="button" data-players="2" aria-pressed="false"><span class="seg-ico"></span><span><b>2 players</b><small>Split screen. WASD against the arrows.</small></span></button>
               <button class="seg-btn" type="button" data-players="online" aria-pressed="false"><span class="seg-ico"></span><span><b>Online</b><small>Play a friend over the internet. You get a link to send.</small></span></button>
             </div>

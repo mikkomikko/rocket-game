@@ -6,6 +6,7 @@ import { MAPS } from '@rocket-duel/shared/level/terrain.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { appEl } from './header.js';
 import { activeMap } from '../maps/index.js';
+import { updateVictory } from './victory.js';
 
 /* HUD */
 // The small top-centre panel shown while the UI is hidden: health bar, ammo strip and level.
@@ -27,13 +28,13 @@ function setMP(m, key, value, apply) {
   apply(value);
 }
 function updateMiniHud() {
-  const prac = isSolo();
+  const alone = isSolo() && !ships[1].active, cpu = game.mode === 'solo' && !alone;
   for (let i = 0; i < 2; i++) {
     const m = mini.players[i], s = ships[i];
-    const show = !!s && !(prac && i === 1);
+    const show = !!s && !(alone && i === 1);
     setMP(m, 'show', show, (v) => { m.el.hidden = !v; });
     if (!show) continue;
-    setMP(m, 'tag', prac ? '' : `P${i + 1}`, (v) => { m.tag.textContent = v; });
+    setMP(m, 'tag', alone ? '' : cpu ? (i ? 'CPU' : 'You') : `P${i + 1}`, (v) => { m.tag.textContent = v; });
     const hp = s.alive ? Math.round(clamp(s.hp / 100, 0, 1) * 1000) / 10 : 0;
     // hue 120 = green at full health, 60 = yellow at half, 0 = red when empty
     setMP(m, 'hp', hp, (v) => { m.hp.style.width = `${v}%`; m.hp.style.backgroundColor = `hsl(${Math.round(v * 1.2)} 78% 50%)`; });
@@ -57,6 +58,7 @@ function setIfChanged(h, key, el, prop, value) {
   if (prop === 'text') el.textContent = value; else el.style[prop] = value;
 }
 export function updateHud() {
+  updateVictory();
   if (appEl.classList.contains('ui-hidden')) updateMiniHud();
   for (const s of ships) {
     const h = huds[s.id];
@@ -73,7 +75,6 @@ export function updateHud() {
     if (s.alive && s.minigunT > 0) status = `Minigun! ${Math.ceil(s.minigunT)} s left`;
     if (s.alive && s.crossT > 0 && !status.startsWith('Minigun')) status = status ? `${status} · crosshair ${Math.ceil(s.crossT)} s` : `Crosshair ${Math.ceil(s.crossT)} s left`;
     if (s.alive && s.frozenT > 0) status = `Frozen! ${s.frozenT.toFixed(1)} s`;
-    if (s.alive && s.ballT > 0) status = `Trapped in a ball! ${s.ballT.toFixed(1)} s`;
     if (s.alive && s.msgUntil > game.time) status = s.msg;
     setIfChanged(h, 'status', h.status, 'text', status);
     if (isPractice() && h.tele) {

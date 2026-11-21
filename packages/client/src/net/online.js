@@ -6,7 +6,7 @@ import { quietly, simEvent } from '@rocket-duel/shared/events.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { canFire, moveShip } from '@rocket-duel/shared/ships/physics.js';
 import { cycleWeapon, fire } from '@rocket-duel/shared/ships/weapons.js';
-import { B, BULLET_SLOTS, MAXB, onPredictedShot, PREDICTED_SLOTS } from '@rocket-duel/shared/bullets.js';
+import { B, BULLET_SLOTS, MAXB, onPredictedShot, PREDICTED_SLOTS, steerBullet } from '@rocket-duel/shared/bullets.js';
 import { applyShips, BULLET_ROW, decodeArgs } from '@rocket-duel/shared/net.js';
 import { setMode } from '../game/modes.js';
 import { activeMap } from '../maps/index.js';
@@ -275,6 +275,7 @@ function snap(m) {
     me.px = me.x; me.py = me.y; me.pa = me.a;
   }
 
+  game.winner = m.winner ?? -1;
   if (m.map) activeMap().apply?.(m.map);
   applyBoxes(m.boxes);   // before the events, so a box that just appeared sparkles where it now is
   for (const [type, ...args] of m.events) {
@@ -320,6 +321,8 @@ export function sendInputs() {
 export function mapAction(action) {
   if (net.online) send({ t: 'map', action }); else activeMap().action?.(ships[0], action);
 }
+// The next match after one is won: online both players get it from the server.
+export function askRematch() { send({ t: 'rematch' }); }
 export function switchWeapon(s) {
   if (net.online) net.cycle = true; else cycleWeapon(s);   // online: sent with the next step's input
 }
@@ -339,6 +342,7 @@ export function netStep(h) {
   if (me.alive && me.active) predict(me, inp, h, true);
   for (let i = 0; i < BULLET_SLOTS; i++) {
     if (!B.on[i]) continue;
+    if (WEAPONS[B.kind[i]].homing) steerBullet(i, h);   // missiles keep chasing the other ship
     B.vy[i] -= P.gravity * P.bulletGravity * WEAPONS[B.kind[i]].grav * h;
     B.x[i] += B.vx[i] * h; B.y[i] += B.vy[i] * h;
     // A predicted shot stops at walls and when its time runs out; the server's copy of it then stays hidden.

@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import { P } from '@rocket-duel/shared/config.js';
+import { MISSILE_IDX, P, WEAPONS } from '@rocket-duel/shared/config.js';
 import { clamp } from '@rocket-duel/shared/math.js';
 import { onSim } from '@rocket-duel/shared/events.js';
 import { localToWorld, ships } from '@rocket-duel/shared/ships/ship.js';
 import { B, BULLET_SLOTS } from '@rocket-duel/shared/bullets.js';
 import { BIG } from '@rocket-duel/shared/ships/bigLaser.js';
 import { views } from '../ships/view.js';
-import { BALL_COL, DUST, EMBER, FIRE, ICE_COL, WHITE } from './pools.js';
+import { DUST, EMBER, FIRE, ICE_COL, MISSILE_COL, WHITE } from './pools.js';
 import { TR, trailPoint } from './trails.js';
 import { spray, surfaceAt, terrainDebris, terrainMaterial } from './debris.js';
 import { emit } from './particles.js';
@@ -30,12 +30,6 @@ export function iceBurst(x, y, n) {
   }
   emit(x, y, 0, 0, 0.15, ICE_COL, 0, 16);
 }
-export function ballPop(x, y, n) {
-  for (let j = 0; j < n; j++) {
-    const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 140;
-    emit(x, y, Math.cos(a) * sp, Math.sin(a) * sp, 0.35 + Math.random() * 0.3, j % 3 ? BALL_COL : WHITE, 0.3, 2.5 + Math.random() * 2.5);
-  }
-}
 export function dust(x, y, n, impact) {
   const rc = groundRGB(y);
   DUST.setRGB(rc[0] / 255 * 1.6, rc[1] / 255 * 1.6, rc[2] / 255 * 1.6, THREE.SRGBColorSpace);
@@ -51,9 +45,9 @@ export function dust(x, y, n, impact) {
 onSim('shake', shake);
 onSim('sound', (name, ...args) => sfx[name](...args));
 onSim('dust', dust);
-onSim('ballPop', ballPop);
 onSim('iceBurst', iceBurst);
 onSim('bulletEnd', (i) => trailPoint(i, true));
+onSim('boxTaken', updateWeaponButtons);   // an ammo box brings the missiles back
 onSim('bulletsCleared', () => { SM.on.fill(0); TR.life.fill(0); });
 
 onSim('killed', (s, how) => {
@@ -109,9 +103,14 @@ onSim('fired', (s, id, nose, ang) => {
     }
     if (P.smoke) for (let i = 0; i < 4; i++) emitSmoke(nose.x, nose.y, dx * 40 + s.vx * 0.3 + (Math.random() - 0.5) * 30, dy * 40 + s.vy * 0.3 + (Math.random() - 0.5) * 30, P.smokeLife * 0.6, 9 + Math.random() * 6);
     emit(nose.x, nose.y, s.vx, s.vy, 0.12, WHITE, 0, 30);
+  } else if (id === 'missile') {
+    sfx.missile(s);
+    updateWeaponButtons();   // one missile fewer
+    emit(nose.x, nose.y, s.vx, s.vy, 0.1, MISSILE_COL, 0, 20);
+    if (P.smoke) for (let i = 0; i < 5; i++) emitSmoke(nose.x, nose.y, -dx * (20 + Math.random() * 40) + s.vx * 0.3 + (Math.random() - 0.5) * 40, -dy * (20 + Math.random() * 40) + s.vy * 0.3 + (Math.random() - 0.5) * 40, P.smokeLife * 0.5, 7 + Math.random() * 5);
   } else {
     if (id === 'ice') sfx.freezer(s); else sfx.shoot(s);
-    emit(nose.x, nose.y, dx * 80 + s.vx, dy * 80 + s.vy, 0.09, id === 'ice' ? ICE_COL : id === 'ball' ? BALL_COL : views[s.id].color, 0, id === 'ice' || id === 'ball' ? 16 : 12);
+    emit(nose.x, nose.y, dx * 80 + s.vx, dy * 80 + s.vy, 0.09, id === 'ice' ? ICE_COL : views[s.id].color, 0, id === 'ice' ? 16 : 12);
   }
 });
 // The little box by the ship slides the old weapon out and the new one in.
@@ -129,8 +128,9 @@ onSim('shipHit', (x, y, s, kind) => {
   for (let j = 0; j < 8; j++) emit(x, y, (Math.random() - 0.5) * 180, (Math.random() - 0.5) * 180, 0.3, j % 2 ? (kind === 2 ? ICE_COL : views[s.id].color) : WHITE, 0.2);
 });
 onSim('explosion', (x, y, kind) => {
-  if (kind !== 1) sfx.rock(x, y);
-  terrainDebris(x, y, kind === 1 ? 2.6 : 1);
+  const blast = WEAPONS[kind]?.blast;
+  if (!blast) sfx.rock(x, y);
+  terrainDebris(x, y, blast ? 2.6 * blast / 64 + 0.4 : 1);
   const rc = groundRGB(y);
   DUST.setRGB(rc[0] / 255 * 1.6, rc[1] / 255 * 1.6, rc[2] / 255 * 1.6, THREE.SRGBColorSpace);
   emit(x, y, 0, 0, 0.14, EMBER, 0, 18);
@@ -139,25 +139,26 @@ onSim('explosion', (x, y, kind) => {
     emit(x, y, Math.cos(a) * sp, Math.sin(a) * sp, 0.25 + Math.random() * 0.3, j % 2 ? FIRE : EMBER, 0.3);
   }
 });
-// The Cannon shell going off.
-onSim('blast', (x, y) => {
-  sfx.blast(x, y);
-  emit(x, y, 0, 0, 0.22, WHITE, 0, 60);
-  emit(x, y, 0, 0, 0.35, FIRE, 0, 110);
-  for (let j = 0; j < 40; j++) {
-    const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 320;
+// A Cannon shell or a missile going off (a missile's blast is smaller).
+onSim('blast', (x, y, kind = 1) => {
+  const k = WEAPONS[kind].blast / 64;
+  sfx.blast(x, y, k);
+  emit(x, y, 0, 0, 0.22, WHITE, 0, 60 * k);
+  emit(x, y, 0, 0, 0.35, FIRE, 0, 110 * k);
+  for (let j = 0; j < 40 * k; j++) {
+    const a = Math.random() * Math.PI * 2, sp = (60 + Math.random() * 320) * Math.sqrt(k);
     emit(x, y, Math.cos(a) * sp, Math.sin(a) * sp, 0.35 + Math.random() * 0.6, j % 3 ? FIRE : EMBER, 0.5, 3 + Math.random() * 6);
   }
-  if (P.smoke) for (let j = 0; j < 12; j++) {
+  if (P.smoke) for (let j = 0; j < 12 * k; j++) {
     const a = Math.random() * Math.PI * 2, sp = 20 + Math.random() * 80;
-    emitSmoke(x, y, Math.cos(a) * sp, Math.sin(a) * sp, P.smokeLife * (0.7 + Math.random() * 0.5), 14 + Math.random() * 12);
+    emitSmoke(x, y, Math.cos(a) * sp, Math.sin(a) * sp, P.smokeLife * (0.7 + Math.random() * 0.5), (14 + Math.random() * 12) * Math.sqrt(k));
   }
 });
 
 // Looks that run once per simulation step, after it: exhaust, frost, the Big laser's sparks, bullet trails.
 export function stepEffects(h) {
   for (const s of ships) {
-    if (!s.active || !s.alive || s.ballT > 0) continue;
+    if (!s.active || !s.alive) continue;
     if (s.frozenT > 0) {
       if (Math.random() < 0.25) {
         const a = Math.random() * Math.PI * 2;
@@ -194,7 +195,16 @@ export function stepEffects(h) {
     if (!B.on[i]) continue;
     const kind = B.kind[i];
     if (kind === 1 && P.smoke && Math.random() < 0.5) emitSmoke(B.x[i], B.y[i], (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, P.smokeLife * 0.35, 5 + Math.random() * 3);
+    if (kind === MISSILE_IDX) missileExhaust(i);
     if (kind === 2 && Math.random() < 0.35) emit(B.x[i], B.y[i], (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30, 0.35, ICE_COL, 0.2, 2 + Math.random() * 2);
     trailPoint(i, false);
   }
+}
+
+// A flying missile: a thick smoke trail that lingers and drifts, and sparks from its motor.
+function missileExhaust(i) {
+  const sp = Math.hypot(B.vx[i], B.vy[i]) || 1, bx = -B.vx[i] / sp, by = -B.vy[i] / sp;
+  const x = B.x[i] + bx * 5, y = B.y[i] + by * 5;
+  if (P.smoke) emitSmoke(x, y, bx * 25 + (Math.random() - 0.5) * 14, by * 25 + (Math.random() - 0.5) * 14, P.smokeLife * (0.45 + Math.random() * 0.3), 5 + Math.random() * 4);
+  if (Math.random() < 0.6) emit(x, y, bx * 140 + (Math.random() - 0.5) * 60, by * 140 + (Math.random() - 0.5) * 60, 0.12 + Math.random() * 0.1, Math.random() < 0.5 ? FIRE : EMBER, 0, 2.5 + Math.random() * 2.5);
 }

@@ -2,10 +2,11 @@ import { P } from '../config.js';
 import { game } from '../state.js';
 import { H, level, repaint, W } from '../level/mask.js';
 import { simEvent } from '../events.js';
-import { SHIP_RADIUS, ships } from '../ships/ship.js';
+import { armForMatch, SHIP_RADIUS, ships } from '../ships/ship.js';
 import { addShake, damage, kill, respawn } from '../ships/physics.js';
 import { clearBullets } from '../bullets.js';
 import { resetBoxes } from '../boxes.js';
+import { scorePoint } from '../victory.js';
 
 /* ------------------------------------------------------------------ *
  * Floors rules: a race up two hallways with lava rising behind each player. Asteroids drift across the
@@ -65,7 +66,7 @@ function startRace() {
 // The next race: like rebuilding the map (only the blocks ever change its mask), then every ship in play back to its pad.
 function restartRace() {
   game.matchClock = 0;
-  for (const s of ships) { s.bigLaser = 1; s.beam = null; }
+  for (const s of ships) armForMatch(s);
   for (const b of FL.blocks) if (!b.alive) paintBlock(b, 2);
   startRace();
   FL.race++;
@@ -74,7 +75,7 @@ function restartRace() {
   clearBullets();
 }
 function reachTop(s) {
-  s.score++;
+  scorePoint(s);
   restartRace();
   simEvent('floorsWon', s);
 }

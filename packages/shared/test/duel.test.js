@@ -14,12 +14,16 @@ import { boxes, resetBoxes } from '../src/boxes.js';
 import { mapRules, setMapRules } from '../src/maps.js';
 import { rulesFor } from '../src/maps/index.js';
 import { DINO, dinoMouth, PU } from '../src/maps/forest.js';
+import { resetMatchScore, winTarget } from '../src/victory.js';
+import { cpuPlays, resetCpu } from '../src/cpu.js';
 
 const H = 1 / 120;
 const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) h = Math.imul(h ^ a[i], 16777619); return (h >>> 0).toString(16); };
 setMapRules(() => rulesFor(level.theme));   // as the server does: the shared map rules
 const counts = {};
-for (const type of ['dinoAte', 'dinoKilled', 'minigunTaken', 'boxTaken', 'fired', 'explosion', 'killed', 'respawned', 'weaponChanged', 'blast']) onSim(type, () => { counts[type] = (counts[type] || 0) + 1; });
+// A listener for one test: returns a function that switches it off.
+function onSimOnce(type, fn) { let on = true; onSim(type, (...a) => { if (on) fn(...a); }); return () => { on = false; }; }
+for (const type of ['dinoAte', 'dinoKilled', 'minigunTaken', 'boxTaken', 'fired', 'explosion', 'killed', 'respawned', 'weaponChanged', 'blast', 'matchWon']) onSim(type, () => { counts[type] = (counts[type] || 0) + 1; });
 
 function newMatch(map = 'cave', seed = 1) {
   Object.assign(P, structuredClone(DEFAULTS), { map });
@@ -29,14 +33,96 @@ function newMatch(map = 'cave', seed = 1) {
   clearBullets();
   seedRandom(seed);
   resetBoxes();
+  resetMatchScore();
   for (const s of ships) {
-    s.score = 0; s.weapon = 0; s.bigLaser = 1; s.beam = null;
+    s.weapon = 0; s.bigLaser = 1; s.beam = null;
     s.input = { turn: 0, thrust: 0, fire: false };
     respawn(s);
   }
   for (const k of Object.keys(counts)) delete counts[k];
 }
 const run = (seconds) => { for (let t = 0; t < seconds; t += H) stepSim(H); };
+
+describe('the match goes to the first player with P.winsToWin', () => {
+  beforeEach(() => newMatch());
+  const killOnce = (s) => { s.invulnT = 0; damage(s, 1e9); run(P.respawnTime + 0.1); };
+
+  it('ends when a player reaches the target, and stops scoring and damage', () => {
+    expect(winTarget()).toBe(5);
+    for (let k = 0; k < 4; k++) killOnce(ships[1]);
+    killOnce(ships[0]);
+    expect(game.winner).toBe(-1);
+    killOnce(ships[1]);
+    expect(ships[0].score).toBe(5);
+    expect(game.winner).toBe(0);
+    expect(counts.matchWon).toBe(1);
+    ships[1].invulnT = 0;
+    damage(ships[1], 1e9);
+    expect(ships[1].alive).toBe(true);
+    expect(ships[0].score).toBe(5);
+    run(1);
+    expect(counts.matchWon).toBe(1);
+  });
+
+  it('follows the target in the tuning, and has none in practice or on the Starship', () => {
+    P.winsToWin = 2;
+    killOnce(ships[1]); killOnce(ships[1]);
+    expect(game.winner).toBe(0);
+    resetMatchScore();
+    expect(game.winner).toBe(-1);
+    expect(ships[0].score).toBe(0);
+    game.mode = 'solo';
+    expect(winTarget()).toBe(2);   // one player plays the CPU to the same target
+    game.mode = 'practice';
+    expect(winTarget()).toBe(0);
+    newMatch('starship');
+    expect(winTarget()).toBe(0);
+  });
+});
+
+describe('the computer pilot in a one-player game', () => {
+  // The player only hovers above their pad now and then; the CPU has to find them and shoot them down.
+  function play(map, seed, seconds, until) {
+    newMatch(map, seed);
+    game.mode = 'solo';
+    resetCpu();
+    const me = ships[0], cpu = ships[1];
+    let crashes = 0;
+    const off = onSimOnce('killed', (s, how) => { if (s === cpu && !how) crashes++; });
+    for (let t = 0; t < seconds && !until?.(); t += H) {
+      me.input.thrust = game.time % 6 < 1 ? 1 : me.vy < -20 ? 0.6 : 0.12;
+      stepSim(H);
+    }
+    off();
+    return { me, cpu, crashes };
+  }
+
+  it('flies to the player through the cave and shoots them down, without crashing', () => {
+    const { me, cpu, crashes } = play('cave', 3, 120, () => ships[1].score >= 1);
+    expect(cpu.score).toBeGreaterThanOrEqual(1);
+    expect(me.score).toBe(0);
+    expect(crashes).toBe(0);
+    expect(cpuPlays()).toBe(true);
+  });
+
+  it('plays the same way from the same seed', () => {
+    const a = play('forest', 2, 30);
+    const runA = [a.cpu.x, a.cpu.y, a.cpu.hp, a.cpu.ammo, a.me.hp];
+    const b = play('forest', 2, 30);
+    expect([b.cpu.x, b.cpu.y, b.cpu.hp, b.cpu.ammo, b.me.hp]).toEqual(runA);
+  });
+
+  it('races up its hallway in Floors, shooting the blocks in the way', () => {
+    const { cpu } = play('floors', 2, 120, () => ships[1].score >= 1);
+    expect(cpu.score).toBeGreaterThanOrEqual(1);
+  });
+
+  it('sits out the Starship, where the players team up', () => {
+    newMatch('starship');
+    game.mode = 'solo';
+    expect(cpuPlays()).toBe(false);
+  });
+});
 
 describe('the duel runs without a browser', () => {
   beforeEach(() => newMatch());

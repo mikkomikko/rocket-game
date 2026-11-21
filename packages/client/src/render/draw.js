@@ -32,7 +32,7 @@ export function drawPools() {
     const col = bulletColor(i);
     bp[n * 3] = B.x[i]; bp[n * 3 + 1] = B.y[i]; bp[n * 3 + 2] = 0;
     bc[n * 3] = col.r; bc[n * 3 + 1] = col.g; bc[n * 3 + 2] = col.b;
-    bs[n] = kind === 1 ? wp.size * (0.9 + 0.15 * Math.sin(game.time * 30 + i)) : wp.size;
+    bs[n] = kind === 1 ? wp.size * (0.9 + 0.15 * Math.sin(game.time * 30 + i)) : wp.homing ? wp.size * (0.8 + 0.3 * Math.random()) : wp.size;
     // Live piece from the last dropped trail point up to the bullet itself.
     tn = trailQuad(tp, tc, tn, B.tx[i], B.ty[i], Math.max(0, 1 - (now - B.tt[i]) / wp.tLife), B.x[i], B.y[i], 1, wp.tWidth, col.r, col.g, col.b);
     n++;

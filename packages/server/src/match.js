@@ -8,10 +8,11 @@ import { rulesFor } from '@rocket-duel/shared/maps/index.js';
 import { generateMap } from '@rocket-duel/shared/level/generate.js';
 import { onAnySim } from '@rocket-duel/shared/events.js';
 import { seedRandom } from '@rocket-duel/shared/random.js';
-import { ships } from '@rocket-duel/shared/ships/ship.js';
+import { armForMatch, ships } from '@rocket-duel/shared/ships/ship.js';
 import { respawn } from '@rocket-duel/shared/ships/physics.js';
 import { B, clearBullets } from '@rocket-duel/shared/bullets.js';
 import { stepSim } from '@rocket-duel/shared/sim.js';
+import { resetMatchScore } from '@rocket-duel/shared/victory.js';
 import { encodeBoxes, resetBoxes } from '@rocket-duel/shared/boxes.js';
 import { encodeArgs, encodeBullets, encodeShips, ONLINE_MAPS, SNAP_EVERY } from '@rocket-duel/shared/net.js';
 
@@ -41,7 +42,8 @@ export function runMatch({ map = 'cave', seed = 7, room = '' } = {}, port) {
   clearBullets();
   seedRandom(seed);
   resetBoxes();
-  for (const s of ships) { s.active = false; s.alive = false; s.score = 0; s.bigLaser = 1; s.beam = null; }
+  resetMatchScore();
+  for (const s of ships) { s.active = false; s.alive = false; armForMatch(s); }
 
   const out = (to, m) => port.postMessage({ k: 'send', to, data: JSON.stringify(m) });
   const carves = [];   // every crater so far, so a player who joins late sees the same cave
@@ -80,7 +82,7 @@ export function runMatch({ map = 'cave', seed = 7, room = '' } = {}, port) {
       Object.assign(seats[id], { cid, queue: [], ack: 0 });
     } else {
       seats[id] = { cid, token: randomUUID(), queue: [], ack: 0 };
-      s.score = 0;
+      resetMatchScore();   // a new opponent: a new match, from 0 - 0
       s.weapon = 0;
     }
     s.input = { turn: 0, thrust: 0, fire: false };
@@ -101,6 +103,18 @@ export function runMatch({ map = 'cave', seed = 7, room = '' } = {}, port) {
       if (seat.queue.length > MAX_QUEUE) seat.ack = seat.queue.splice(0, seat.queue.length - MAX_QUEUE).at(-1)[0];
     }
     else if (m.t === 'map') mapRules().action?.(s, m.action);
+    else if (m.t === 'rematch') rematch();
+  }
+  // Either player asks for the next match once one is won: scores to zero, both ships back to their pads.
+  function rematch() {
+    if (game.winner < 0) return;
+    game.matchClock = 0;
+    resetMatchScore();
+    for (const st of ships) armForMatch(st);
+    mapRules().start?.();
+    resetBoxes();
+    clearBullets();
+    for (const st of ships) if (st.active) respawn(st);
   }
   // A dropped player's ship leaves the cave; the seat stays theirs for HOLD_SEAT seconds.
   function leave(cid) {
@@ -139,7 +153,7 @@ export function runMatch({ map = 'cave', seed = 7, room = '' } = {}, port) {
       stepSim(h, inputsFor);
       acc -= h;
       if (++steps % SNAP_EVERY === 0) {
-        out(here(), { t: 'snap', ships: encodeShips(), bullets: encodeBullets(), boxes: encodeBoxes(), map: mapRules().encode?.() ?? null, events, acks: seats.map((st) => st?.ack ?? 0) });
+        out(here(), { t: 'snap', ships: encodeShips(), bullets: encodeBullets(), boxes: encodeBoxes(), map: mapRules().encode?.() ?? null, winner: game.winner, events, acks: seats.map((st) => st?.ack ?? 0) });
         events = [];
         // A seat held too long is given up: the next player to join takes it.
         let freed = false;

@@ -3,7 +3,7 @@ import { clamp, segDist, wrapAngle } from '../math.js';
 import { H, level, repaint, solidAt, W } from '../level/mask.js';
 import { simEvent } from '../events.js';
 import { random } from '../random.js';
-import { SHIP_RADIUS, ships } from '../ships/ship.js';
+import { armForMatch, SHIP_RADIUS, ships } from '../ships/ship.js';
 import { addShake, damage, respawn } from '../ships/physics.js';
 import { clearBullets, spawnBullet } from '../bullets.js';
 import { applyRobot, encodeRobot, hurtRobot, RB, resetRobot, robotEye, robotShot, stepRobotFight } from './hangar.js';
@@ -337,7 +337,7 @@ function stepStarship(h) {
 // Restart after the finish (online; a browser on its own rebuilds the whole map instead).
 function restart() {
   for (const s of ships) {
-    s.score = 0; s.bigLaser = 1; s.beam = null;
+    s.score = 0; armForMatch(s);
     if (s.active) respawn(s);
   }
   clearBullets();
@@ -405,6 +405,7 @@ function action(s, a) {
 
 export const shipRules = {
   coop: true,
+  noMatchWins: true,   // the players fight robots together: no first to P.winsToWin
   start: resetStarship,
   simStep: stepStarship,
   bulletHit(x, y, owner, dmg, kind) { return owner < 2 && bulletHitsEnemy(owner, x, y, dmg, kind); },

@@ -9,6 +9,7 @@ import { pane } from './ui/tuningPanel.js';
 import { openStart, startEl, startKey } from './ui/startScreen.js';
 import { activeMap } from './maps/index.js';
 import { net, switchWeapon } from './net/online.js';
+import { playAgain, victoryOpen } from './ui/victory.js';
 
 /* ------------------------------------------------------------------ *
  * Input: keyboard and gamepads merged into one action state per player
@@ -27,6 +28,7 @@ window.addEventListener('keydown', (e) => {
   if (!startEl.hidden) { startKey(e); return; }
   if (picker.open) { pickerKey(e); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && victoryOpen()) { e.preventDefault(); playAgain(); return; }
   if (GAME_CODES.has(e.code)) {
     e.preventDefault();
     keysDown.add(e.code);

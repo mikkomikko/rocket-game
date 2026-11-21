@@ -66,6 +66,8 @@ fPractice.addButton({ title: 'Reset ship (R)' }).on('click', restartMatch);
 export const fLevel = pane.addFolder({ title: 'Map', expanded: true });
 fLevel.addBinding(P, 'map', { label: 'Map', options: Object.fromEntries(Object.entries(MAPS).map(([k, v]) => [v.name, k])) })
   .on('change', () => { if (P.map !== level.builtMap) rebuildCave(); });
+fLevel.addBinding(P, 'winsToWin', { label: 'Wins to take match', min: 1, max: 15, step: 1 });
+fLevel.addBinding(P, 'cpuSkill', { label: 'CPU skill (1 player)', min: 0, max: 1, step: 0.05 });
 fLevel.addBinding(P, 'lavaSpeed', { label: 'Floors: lava speed', min: 0, max: 300, step: 5 });
 fLevel.addBinding(P, 'lavaAccel', { label: 'Floors: lava speed-up', min: 0, max: 20, step: 0.5 });
 fLevel.addBinding(P, 'lavaDelay', { label: 'Floors: lava wait, s', min: 0, max: 10, step: 0.5 });

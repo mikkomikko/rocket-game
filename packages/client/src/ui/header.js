@@ -51,4 +51,3 @@ document.addEventListener('click', (e) => {
 stage.addEventListener('pointerdown', () => {
   if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
 });
-if (window.matchMedia('(max-width: 820px)').matches) togglePanel();

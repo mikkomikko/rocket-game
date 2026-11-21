@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { P1HEX, P2HEX } from '../config.js';
-import { BALL_COLOR, BALL_R, FREEZE_COLOR } from '@rocket-duel/shared/config.js';
+import { FREEZE_COLOR } from '@rocket-duel/shared/config.js';
 import { H, W } from '@rocket-duel/shared/level/mask.js';
 import { HULL } from '@rocket-duel/shared/ships/ship.js';
 import { glowMat, scene } from '../render/scene.js';
@@ -50,27 +50,7 @@ function makeView(id) {
   ice.add(iceShell, iceRing);
   ice.visible = false;
   ice.userData = { shell: iceShell, ring: iceRing };
-  // Bouncer ball: a see-through bubble with stripes (they spin as it rolls) and a fixed highlight.
-  const ball = new THREE.Group();
-  const ballMat = (op) => new THREE.MeshBasicMaterial({ color: BALL_COLOR, transparent: true, opacity: op, depthWrite: false });
-  const ballFill = new THREE.Mesh(new THREE.CircleGeometry(BALL_R, 40), ballMat(0.2));
-  const ballRim = new THREE.Mesh(new THREE.RingGeometry(BALL_R - 1.6, BALL_R, 48), ballMat(0.85));
-  const ballStripes = new THREE.Group();
-  for (let k = 0; k < 3; k++) {
-    const st = new THREE.Mesh(new THREE.PlaneGeometry(BALL_R * 1.9, 1.4), ballMat(0.45));
-    st.rotation.z = k * Math.PI / 3;
-    ballStripes.add(st);
-  }
-  const ballShine = new THREE.Mesh(new THREE.CircleGeometry(3.2, 16), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.6, depthWrite: false }));
-  const ballShinePivot = new THREE.Group();
-  ballShine.position.set(-BALL_R * 0.45, BALL_R * 0.5, 0.01);
-  ballShinePivot.add(ballShine);
-  ballFill.position.z = 0.06; ballStripes.position.z = 0.07; ballRim.position.z = 0.08; ballShinePivot.position.z = 0.09;
-  ball.add(ballFill, ballStripes, ballRim, ballShinePivot);
-  ball.visible = false;
-  ball.userData = { fill: ballFill, rim: ballRim, stripes: ballStripes, shine: ballShinePivot, mats: [ballFill.material, ballRim.material, ...ballStripes.children.map((c) => c.material), ballShine.material] };
-  ball.userData.base = ball.userData.mats.map((m) => m.opacity);
-  group.add(aura, flame, left, right, cockpit, glint, shield, ice, ball);
+  group.add(aura, flame, left, right, cockpit, glint, shield, ice);
 
   // Aim guide: a faint line from the nose out to a small crosshair. Seen only in this player's own view.
   const aim = new THREE.Group();
@@ -121,7 +101,7 @@ function makeView(id) {
 
   return {
     hex, color: new THREE.Color(hex), group, flame, hullMat, shadeMat, crossMat, aimGeo: lineGeo, aura, shield, traj, hullPts, arrow,
-    ice, aim, ball,
+    ice, aim,
     smokeAcc: 0,
     cam: { x: W / 2, y: H / 2, shake: 0 },
   };

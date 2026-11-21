@@ -1,4 +1,4 @@
-import { isPractice, P, PR } from './config.js';
+import { isPractice, MISSILES, P, PR } from './config.js';
 import { H, level, solidAt, W } from './level/mask.js';
 import { simEvent } from './events.js';
 import { mapRules } from './maps.js';
@@ -6,7 +6,7 @@ import { random } from './random.js';
 import { ships } from './ships/ship.js';
 
 /* ------------------------------------------------------------------ *
- * Floating supply boxes on every map: ammo, health (+50) and crosshair (30 s).
+ * Floating supply boxes on every map: ammo (and the missiles back), health (+50) and crosshair (30 s).
  * They hang in open air that both players can reach and come back at a new spot a while after they
  * are taken. If a player runs dry, or every ammo box is gone, new ammo boxes appear right away.
  * State only; the client draws them (systems/boxes.js) and hears:
@@ -106,8 +106,9 @@ export function stepBoxes(h) {
       if (!s.active || !s.alive) continue;
       if (Math.hypot(s.x - b.x, s.y - b.y) > 24 * Math.max(1, P.shipSize)) continue;
       if (b.kind === 'ammo') {
-        if (s.ammo >= P.ammoMax - 0.5) continue;
+        if (s.ammo >= P.ammoMax - 0.5 && s.missiles >= MISSILES) continue;
         s.ammo = P.ammoMax;
+        s.missiles = MISSILES;
       } else if (b.kind === 'health') {
         if (s.hp >= 99.5) continue;
         s.hp = Math.min(100, s.hp + HEALTH_GAIN);

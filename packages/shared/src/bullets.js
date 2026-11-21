@@ -1,11 +1,11 @@
-import { BALL_IDX, BALL_R, P, WEAPONS } from './config.js';
+import { P, WEAPONS } from './config.js';
 import { game } from './state.js';
 import { solidAt } from './level/mask.js';
 import { simEvent } from './events.js';
 import { mapRules } from './maps.js';
 import { SHIP_RADIUS, ships } from './ships/ship.js';
 import { damage, shipMass } from './ships/physics.js';
-import { ballShip } from './ships/weapons.js';
+import { missileHitR, missileTarget, steerMissile } from './missile.js';
 import { explode, freezeShip } from './explosions.js';
 
 /* ------------------------------------------------------------------ *
@@ -42,6 +42,14 @@ export function spawnBullet(owner, x, y, vx, vy, life, kind = 0) {
 }
 export function clearBullets() { B.on.fill(0); simEvent('bulletsCleared'); }
 
+// Steers a homing missile in slot i (see missile.js).
+const mis = { x: 0, y: 0, vx: 0, vy: 0 };
+export function steerBullet(i, h) {
+  mis.x = B.x[i]; mis.y = B.y[i]; mis.vx = B.vx[i]; mis.vy = B.vy[i];
+  steerMissile(mis, missileTarget(B.owner[i]), h);
+  B.vx[i] = mis.vx; B.vy[i] = mis.vy;
+}
+
 // Moves every bullet one step. When one stops, simEvent('bulletEnd', i) lets the client finish its trail.
 export function stepBullets(h) {
   const map = mapRules();
@@ -52,11 +60,11 @@ export function stepBullets(h) {
     if (B.life[i] <= 0) {
       B.on[i] = 0;
       simEvent('bulletEnd', i);
-      if (kind === 1) explode(B.x[i], B.y[i], 1, B.owner[i]);   // the Cannon shell goes off when its fuse runs out
+      if (wp.blast) explode(B.x[i], B.y[i], kind, B.owner[i]);   // a Cannon shell's fuse or a missile's fuel runs out
       else if (kind === 2) simEvent('iceBurst', B.x[i], B.y[i], 6);
-      else if (kind === BALL_IDX) simEvent('ballPop', B.x[i], B.y[i], 8);
       continue;
     }
+    if (wp.homing) steerBullet(i, h);
     B.vy[i] -= P.gravity * P.bulletGravity * wp.grav * h;
     const dx = B.vx[i] * h, dy = B.vy[i] * h;
     const n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 2));
@@ -66,17 +74,16 @@ export function stepBullets(h) {
       const x = B.x[i], y = B.y[i];
       if (solidAt(x, y) || map.blocksShot?.(x, y)) {
         if (kind === 2) simEvent('iceBurst', x, y, 10);
-        else if (kind === BALL_IDX) { simEvent('ballPop', x, y, 10); simEvent('sound', 'rock', x, y); }
         else explode(x, y, kind, B.owner[i]);
         B.on[i] = 0; break;
       }
       if (map.bulletHit?.(x, y, B.owner[i], P.bulletDamage * wp.damage, kind)) {
-        if (kind === 1) explode(x, y, 1, B.owner[i]);
+        if (wp.blast) explode(x, y, kind, B.owner[i]);
         B.on[i] = 0; break;
       }
       for (const s of ships) {
         if (s.id === B.owner[i] || !s.alive || (map.coop && B.owner[i] < 2)) continue;
-        const r = (s.ballT > 0 ? BALL_R : SHIP_RADIUS) * P.shipSize + 2;
+        const r = wp.homing ? missileHitR() : SHIP_RADIUS * P.shipSize + 2;
         if ((x - s.x) ** 2 + (y - s.y) ** 2 < r * r) {
           const sp = Math.hypot(B.vx[i], B.vy[i]) || 1;
           const m = shipMass(s);
@@ -86,8 +93,7 @@ export function stepBullets(h) {
           if (kind === 0) simEvent('sound', 'hit', x, y);
           damage(s, P.bulletDamage * wp.damage);
           if (kind === 2) freezeShip(s);
-          if (kind === BALL_IDX) ballShip(s);
-          if (kind === 1) explode(x, y, 1, B.owner[i], s);
+          if (wp.blast) explode(x, y, kind, B.owner[i], s);
           simEvent('shipHit', x, y, s, kind);
           B.on[i] = 0;
           break outer;

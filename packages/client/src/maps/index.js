@@ -17,6 +17,7 @@ import { setMapRules } from '@rocket-duel/shared/maps.js';
  *   material                            what shot terrain sprays: 'soil', 'sand' or 'metal' (default 'rock')
  *   ground                              dust colour [r, g, b] (default: the rock colour at that height)
  *   coop                                players can't hurt each other and kills don't score
+ *   noMatchWins                         no first-to-P.winsToWin match on this map (Starship)
  *   sealedHalls                         supply boxes may sit anywhere open, even out of reach for now
  *   eatenText                           status line for a ship eaten by the map's creature
  *

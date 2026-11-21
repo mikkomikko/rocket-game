@@ -1,5 +1,5 @@
 import { reducedMotion } from './config.js';
-import { BALL_IDX, isPractice, P, PR, WEAPONS } from '@rocket-duel/shared/config.js';
+import { isPractice, P, PR } from '@rocket-duel/shared/config.js';
 import { mon } from './state.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { clamp } from '@rocket-duel/shared/math.js';
@@ -12,6 +12,7 @@ import { stepParticles } from './fx/particles.js';
 import { stepSmoke } from './fx/smoke.js';
 import { drawBoxes } from './systems/boxes.js';
 import { drawBigLasers } from './render/bigLaser.js';
+import { drawMissileSights } from './render/missileSight.js';
 import { keysDown, padsSeen, prettyKey, readInputs } from './input.js';
 import { cams, updateCamera, viewRects } from './render/camera.js';
 import { drawDebug, drawPools } from './render/draw.js';
@@ -82,20 +83,12 @@ function frame(now) {
       v.ice.userData.ring.material.opacity = 0.6 * fade;
       v.ice.userData.ring.rotation.z = game.time * 0.6 - v.group.rotation.z;
     }
-    v.ball.visible = s.ballT > 0;
-    if (v.ball.visible) {
-      const u = v.ball.userData, age = WEAPONS[BALL_IDX].ball - s.ballT;
-      const fade = Math.min(1, s.ballT / 0.4);   // pops at the end
-      const blink = s.ballT < 1.2 ? 0.7 + 0.3 * Math.sin(game.time * 22) : 1;
-      u.mats.forEach((m, k) => { m.opacity = u.base[k] * fade * blink; });
-      v.ball.scale.setScalar(Math.min(1, 0.4 + age * 5) * (1 + 0.04 * Math.sin(game.time * 9)));
-      u.shine.rotation.z = -v.group.rotation.z;   // the highlight stays put while the ball spins
-    }
     drawDebug(s, p.k);
   }
   for (const m of allMaps()) m.draw?.(now, net.online ? snapAlpha() : alpha);   // online, the map runs on the server
   drawBoxes(now);
   drawBigLasers(now);
+  drawMissileSights(alpha);
   gridMesh.visible = isPractice() && PR.grid;
   pointScale.value = P.zoom * renderer.getPixelRatio();
   skyMat.uniforms.uTime.value = reducedMotion ? 0 : now / 1000;

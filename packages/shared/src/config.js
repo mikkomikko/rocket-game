@@ -19,6 +19,9 @@ export const DEFAULTS = {
   bulletSpeed: 650, inheritVelocity: 0.6, fireRate: 9, spread: 2, bulletLife: 1.6,
   bulletGravity: 0.3, recoil: 18, knockback: 60, bulletDamage: 8, ammoMax: 60,
   rearmRate: 25, destructible: true, holeRadius: 7,
+  // Match: the first player to this many wins (kills, or races in Floors) wins the match
+  winsToWin: 5,
+  cpuSkill: 0.3,   // the computer opponent in a one-player game: 0 easy, 1 hard (aim, reaction, trigger discipline)
   // Level
   lavaSpeed: 70, lavaAccel: 2, lavaDelay: 3,
   map: 'cave', seed: 7, rockAmount: 0.5, noiseScale: 140, tunnelRadius: 46,
@@ -49,18 +52,18 @@ export const WEAPONS = [
   { id: 'ice', name: 'Freezer', color: '#9fe7ff', speed: 0.85, rate: 0.3, cost: 3, damage: 0.25, hole: 0, recoil: 1.5, knockback: 0.3, life: 1.3, grav: 1, size: 11, trail: 0.05, tLife: 0.9, tWidth: 4.2,
     freeze: 5 },          // seconds the target stays frozen
   { id: 'laser', name: 'Big laser', color: null, speed: 1, rate: 1, cost: 0, damage: 1, hole: 0, recoil: 0, knockback: 1, life: 1, grav: 1, size: 8, trail: 0.03, tLife: 0.45, tWidth: 2.6 },   // one shot per match: see fireBigLaser
-  { id: 'ball', name: 'Bouncer', color: '#ff5fd2', speed: 0.7, rate: 0.25, cost: 4, damage: 0.4, hole: 0, recoil: 2, knockback: 1.5, life: 1.6, grav: 1.5, size: 13, trail: 0.05, tLife: 0.9, tWidth: 4.5,
-    ball: 5 },            // seconds the target stays trapped in the bouncy ball
+  { id: 'missile', name: 'Missile', color: '#ffd23f', speed: 0.3, rate: 0.12, cost: 0, damage: 3.5, hole: 2.2, recoil: 3, knockback: 2.5, life: 1.25, grav: 0, size: 10, trail: 0.05, tLife: 0.7, tWidth: 3.2,
+    blast: 34, push: 140,          // a smaller splash than the Cannon's
+    homing: { cruise: 0.62, accel: 2.6, turn: 3.2, closeTurn: 16, close: 200, fuse: 6 } },   // see steerMissile
 ];
 export const FREEZE_COLOR = '#9fe7ff';
-/* Bouncer: a hit wraps the ship in a heavy, very bouncy ball. The pilot can't steer or fire, the ball falls a bit
- * harder, bounces off terrain and the map edges, rolls along the ground and takes no crash damage. */
-export const BALL_IDX = WEAPONS.findIndex((w) => w.id === 'ball');
-export const BALL_COLOR = '#ff5fd2';
-export const BALL_R = 19;          // ball radius (world units at ship size 1)
-export const BALL_MASS = 4;        // extra mass while trapped: heavier to knock around, hits the other ship harder
-export const BALL_BOUNCE = 0.86;   // share of impact speed kept on each bounce
-export const BALL_GRAV = 1.3;      // gravity multiplier while trapped
+/* Missile: launches slowly along the nose, speeds up to its cruise speed (cruise × bulletSpeed) and steers towards the
+ * other ship in an arc, turning at most turn rad/s (up to closeTurn near the target, so it can't circle it forever).
+ * Its fuel is its life (life × bulletLife): a target farther away than it can fly in that time escapes, and the
+ * missile goes off where its fuel runs out. fuse: extra hit radius, so a near miss still counts. */
+export const MISSILE_IDX = WEAPONS.findIndex((w) => w.id === 'missile');
+export const MISSILE_COLOR = '#ffd23f';
+export const MISSILES = 2;   // missiles per match (they don't come back on respawn); an ammo box fills them up again
 // The Forest planet's minigun pickup: seconds it lasts, and how much faster it fires.
 export const MINIGUN_TIME = 30, MINIGUN_RATE = 4;
 
