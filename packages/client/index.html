@@ -64,7 +64,7 @@
         <div class="netcard-link" id="netLinkRow" hidden><input id="netLink" type="text" readonly aria-label="Invite link" spellcheck="false"><button class="pbtn" id="netCopy" type="button">Copy link</button></div>
         <button class="pbtn" id="netAction" type="button" hidden></button>
       </div>
-      <div class="overlay" id="pauseOverlay" hidden><p>Paused<small>Press P to continue</small></p></div>
+      <div class="overlay" id="pauseOverlay" hidden><p>Paused<small class="keys-only">Press P to continue</small></p></div>
       <div class="overlay" id="mapToast" hidden><p><span class="toast-name"></span><small class="toast-desc"></small></p></div>
       <div class="wavebar" id="waveBar" hidden><span id="waveText"></span><span class="boss-track" id="bossTrack" hidden><span class="boss-fill" id="bossFill"></span></span></div>
       <div class="finish" id="finishPanel" hidden role="dialog" aria-labelledby="finishTitle">
@@ -78,7 +78,7 @@
       <div class="finish" id="levelPanel" hidden role="dialog" aria-labelledby="levelTitle">
         <div class="finish-box">
           <h2 id="levelTitle">Starship: choose a level</h2>
-          <p class="finish-sub">Pick where to start. Click a level or press 1 to 5.</p>
+          <p class="finish-sub">Pick where to start.<span class="keys-only"> Click a level or press 1 to 5.</span></p>
           <div class="lvl-row" id="levelRow"></div>
         </div>
       </div>
@@ -119,7 +119,7 @@
     <section class="start-row" id="startPlayersRow">
       <h3 class="start-label" id="lblPlayers">Players</h3>
       <div class="seg" role="group" aria-labelledby="lblPlayers">
-        <button class="seg-btn" type="button" data-players="1" aria-pressed="false"><span class="seg-ico"></span><span><b>1 player</b><small>Against a computer pilot. WASD or the arrows steer.</small></span></button>
+        <button class="seg-btn" type="button" data-players="1" aria-pressed="false"><span class="seg-ico"></span><span><b>1 player</b><small>Against a computer pilot.<span class="keys-only"> WASD or the arrows steer.</span></small></span></button>
         <button class="seg-btn" type="button" data-players="2" aria-pressed="false"><span class="seg-ico"></span><span><b>2 players</b><small>Split screen. WASD against the arrows.</small></span></button>
         <button class="seg-btn" type="button" data-players="online" aria-pressed="false"><span class="seg-ico"></span><span><b>Online</b><small>Play a friend over the internet. You get a link to send.</small></span></button>
       </div>

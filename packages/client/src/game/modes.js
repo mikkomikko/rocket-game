@@ -15,6 +15,8 @@ import { activeMap, applyTheme } from '../maps/index.js';
 import { generateMap } from '@rocket-duel/shared/level/generate.js';
 import { views } from '../ships/view.js';
 import { singleView } from '../render/camera.js';
+import { isTouch } from '../touch.js';
+import { net } from '../net/online.js';
 
 // Match flow: restart, rebuild the map, and switch between duel, solo and practice.
 export function restartMatch() {
@@ -72,6 +74,7 @@ export function applyLayout() { stage.dataset.split = singleView() ? 'single' : 
 export function setMode(mode, force = false) {
   closePicker();
   if (mode !== 'practice' && mode !== 'solo') mode = 'duel';
+  if (isTouch && mode === 'duel' && !net.online) mode = 'solo';   // no split screen on a touch device
   const changed = mode !== game.mode;
   game.mode = mode;
   const t = MODE_TEXT[mode];

@@ -10,6 +10,7 @@ import { openStart, startEl, startKey } from './ui/startScreen.js';
 import { activeMap } from './maps/index.js';
 import { net, switchWeapon } from './net/online.js';
 import { playAgain, victoryOpen } from './ui/victory.js';
+import { readTouch } from './touch.js';
 
 /* ------------------------------------------------------------------ *
  * Input: keyboard and gamepads merged into one action state per player
@@ -94,6 +95,7 @@ export function readInputs() {
     a.fire = a.fire || b.fire;
     ships[0].padActive = ships[0].padActive || ships[1].padActive;
   }
+  readTouch(ships[0].input);   // a touch device flies one ship: yours (online, readOnlineInput takes it from here)
   padsSeen.length = 0;
   for (let i = 0; i < pads.length; i++) if (pads[i]) padsSeen.push(`Gamepad ${i + 1}: ${pads[i].id.replace(/\s*\(.*\)\s*/g, ' ').trim().slice(0, 30)}`);
 }

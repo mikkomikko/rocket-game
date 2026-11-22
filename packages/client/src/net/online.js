@@ -14,6 +14,7 @@ import { stage } from '../render/scene.js';
 import { applyBoxes, boxes } from '@rocket-duel/shared/boxes.js';
 import { applySkins } from '../ui/skins.js';
 import { appEl, togglePause } from '../ui/header.js';
+import { isTouch } from '../touch.js';
 
 /* ------------------------------------------------------------------ *
  * Online play: New game → Online, or an invite link (?room=abc123). The server runs the match; this page sends
@@ -192,7 +193,7 @@ function welcome(m) {
   // Your colour and ship are your first skin, wherever you sit; the opponent gets your second.
   const [mine, theirs] = conn.skins, [myShip, theirShip] = conn.designs ?? [];
   applySkins(m.id === 0 ? [mine, theirs] : [theirs, mine], m.id === 0 ? [myShip, theirShip] : [theirShip, myShip]);
-  document.querySelector('.sub').textContent = `Online: you are Player ${m.id + 1} in game ${m.room}. Steer with WASD or the arrows.`;
+  document.querySelector('.sub').textContent = `Online: you are Player ${m.id + 1} in game ${m.room}.${isTouch ? '' : ' Steer with WASD or the arrows.'}`;
   const keys = '<kbd>W</kbd><kbd>↑</kbd>thrust <kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd>turn <kbd>L Shift</kbd><kbd>Space</kbd>fire <kbd>S</kbd><kbd>↓</kbd>weapon <kbd>M</kbd>sound';
   for (const el of document.querySelectorAll('.hud-keys')) el.innerHTML = keys;
   card.state = null;

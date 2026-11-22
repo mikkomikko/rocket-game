@@ -13,6 +13,7 @@ import { applySkins, rocketSVG, skinOf, SKINS } from './skins.js';
 import { designOf, DESIGNS } from '../ships/designs.js';
 import { connect, hasSeat, net } from '../net/online.js';
 import { appEl } from './header.js';
+import { isTouch } from '../touch.js';
 
 /* ------------------------------------------------------------------ *
  * Start screen: players, skins (colour and ship design) and map. A page of its own over the whole
@@ -39,6 +40,7 @@ const hashMode = location.hash.slice(1);
 if (hashMode === 'practice') { setup.players = 1; setup.map = 'practice'; setup.online = false; }
 else if (hashMode === 'solo') { setup.players = 1; setup.online = false; }
 else if (hashMode === 'duel' && !setup.online) setup.players = 2;
+if (isTouch) setup.players = 1;   // no split screen on a touch device: 1 player or online
 if (setup.players === 2 && setup.map === 'practice') setup.map = 'cave';
 
 const PRACTICE_CARD = {

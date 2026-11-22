@@ -5,7 +5,7 @@ import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { bigFree } from '@rocket-duel/shared/ships/bigLaser.js';
 import { cams, viewH, viewSlot } from '../render/camera.js';
 import { views } from '../ships/view.js';
-import { switchWeapon } from '../net/online.js';
+import { net, switchWeapon } from '../net/online.js';
 
 /* ------------------------------------------------------------------ *
  * Weapon box: rounded square next to the ship; old icon slides out left, new one slides in from the right
@@ -34,6 +34,13 @@ export function updateWeaponButtons() {
       : w.id === 'missile' && !bigFree() ? `Missile ×${s.missiles}` : w.name;
     b.querySelector('.wico').innerHTML = weaponIcon(s, s.weapon);
     b.setAttribute('aria-label', `Change weapon. Current: ${w.name}`);
+  }
+  // The touch weapon button shows the weapon of the ship this device flies.
+  const tb = document.getElementById('touchWeapon');
+  if (tb) {
+    const s = ships[net.online ? net.id : 0];
+    tb.querySelector('.wico').innerHTML = weaponIcon(s, s.weapon);
+    tb.setAttribute('aria-label', `Change weapon. Current: ${WEAPONS[s.weapon].name}`);
   }
 }
 export function animateWeaponBox(i, from, to) {

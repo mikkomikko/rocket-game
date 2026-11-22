@@ -51,6 +51,7 @@ To host the page somewhere else (a static host) and the server on its own, build
 
 - `packages/client`: the browser game (Vite).
   - `index.html`: markup; `src/styles/`: CSS; `public/fonts/`: the Allo font.
+  - `src/touch.js`: touch controls on phones and tablets (a stick bottom right that sets heading and thrust, Fire and Weapon buttons bottom left). A touch device plays one ship: no split screen and no key legends (`html.touch`, `styles/touch.css`). `?touch` forces them on with a mouse.
   - `src/main.js`: startup. `src/loop.js`: fixed-step `step()` (shared `stepSim`, then effects, map, boxes) and render `frame()`.
   - `src/config.js` (player colours, saved-tuning key), `src/state.js` (tuning panel monitor).
   - `src/render/field.js`: the level as the GPU draws it (softened mask, rock colours), repainted on level events.
