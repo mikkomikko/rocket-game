@@ -1,7 +1,7 @@
 import { clamp } from '@rocket-duel/shared/math.js';
 import { H, level, onLevel } from '@rocket-duel/shared/level/mask.js';
 import { rowColor } from '../render/field.js';
-import { levelMat, skyMat } from '../render/scene.js';
+import { setShaderTheme } from '../render/scene.js';
 import { resetBoxes } from '@rocket-duel/shared/boxes.js';
 import { forest } from './forest/index.js';
 import { desert } from './desert/index.js';
@@ -54,9 +54,7 @@ onLevel('carved', (x, y, r) => activeMap().carved?.(x, y, r));
 // Switches each map's visuals and systems on or off when the level changes.
 export function applyTheme() {
   const m = activeMap(), sh = m.shader || {};
-  skyMat.uniforms.uForest.value = levelMat.uniforms.uForest.value = sh.forest || 0;
-  skyMat.uniforms.uDesert.value = levelMat.uniforms.uDesert.value = sh.desert || 0;
-  levelMat.uniforms.uSteel.value = sh.steel || 0;
+  setShaderTheme(sh);
   for (const t of allMaps()) if (t !== m) t.leave?.();
   m.enter?.();
   resetBoxes();

@@ -10,6 +10,16 @@ import { field } from './field.js';
 export const stage = document.getElementById('stage');
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+// The sky and terrain shaders run on every pixel, so a big high-DPI canvas costs more GPU time than a
+// frame has. Above this many drawn pixels the pixel ratio drops (never below 1) to stay within it.
+const PIXEL_BUDGET = 3.3e6;
+// Sizes the canvas to w × h CSS pixels, at the screen's pixel ratio or less, within PIXEL_BUDGET.
+export function sizeRenderer(w, h) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(Math.max(1, Math.min(dpr, Math.sqrt(PIXEL_BUDGET / (w * h)))));
+  renderer.setSize(w, h, false);
+}
 renderer.setClearColor('#0a0820');
 stage.prepend(renderer.domElement);
 
@@ -26,12 +36,22 @@ float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += a
 `;
 export const srgb3 = (hex) => new THREE.Vector3(...hexRGB(hex).map((v) => v / 255));
 
+/* The map theme's looks (forest, desert, steel) are compile-time switches, not uniforms: both shaders run
+ * on every pixel of the screen, and blending in a theme that is off still paid for all its noise.
+ * setShaderTheme() recompiles them for the active map (three.js keeps each variant, so switching back is free). */
+const THEME_DEFINES = () => ({ FOREST: 0, DESERT: 0, STEEL: 0 });
+const THEME_GLSL = `
+const float kForest = float(FOREST), kDesert = float(DESERT), kSteel = float(STEEL);
+`;
+
 // Sky: a procedural gradient, soft nebula and round twinkling stars, drawn with a little parallax.
+// One sky per theme: the desert's dusk, else the forest planet's, else the night sky.
 export const skyMat = new THREE.ShaderMaterial({
-  uniforms: { uTime: { value: 0 }, uHalf: { value: new THREE.Vector2(W, H) }, uForest: { value: 0 }, uDesert: { value: 0 } },
+  defines: THEME_DEFINES(),
+  uniforms: { uTime: { value: 0 }, uHalf: { value: new THREE.Vector2(W, H) } },
   vertexShader: `varying vec2 vPos; void main() { vPos = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
-uniform float uTime; uniform vec2 uHalf; uniform float uForest; uniform float uDesert; varying vec2 vPos;
+uniform float uTime; uniform vec2 uHalf; varying vec2 vPos;
 ${NOISE_GLSL}
 float stars(vec2 p, float cell, float density, float sz) {
   vec2 c = floor(p / cell); vec2 f = p - c * cell;
@@ -51,19 +71,55 @@ float ridge(float x, float seed) {
 }
 void main() {
   float h = clamp(vPos.y / (2.0 * uHalf.y) + 0.5, 0.0, 1.0);
+  float st = stars(vPos, 34.0, 0.07, 0.55) + stars(vPos + 50.0, 72.0, 0.20, 0.85);
+  vec3 col;
+#if DESERT || FOREST
+  float n1 = fbm(vPos * 0.0022 + 3.0);
+#endif
+#if DESERT
+  // Dune sea sky: an orange dusk, a big low sun and a ringed planet.
+  vec3 dsc = mix(vec3(0.98, 0.56, 0.30), vec3(0.32, 0.14, 0.36), smoothstep(0.15, 0.72, h));
+  dsc = mix(dsc, vec3(0.08, 0.05, 0.18), smoothstep(0.7, 1.0, h));
+  dsc += vec3(0.95, 0.45, 0.40) * pow(n1, 3.0) * 0.3;
+  float ds = length(vPos - vec2(330.0, -170.0));
+  dsc += vec3(1.0, 0.72, 0.38) * 0.4 * smoothstep(420.0, 0.0, ds);
+  dsc = mix(dsc, vec3(1.0, 0.94, 0.74), smoothstep(84.0, 81.0, ds));
+  dsc += vec3(0.86, 0.85, 1.0) * st * smoothstep(0.55, 0.95, h) * 0.8;
+  vec2 pp = vPos - vec2(-470.0, 350.0);
+  float pu = pp.x * 0.94 + pp.y * 0.34, pv = -pp.x * 0.34 + pp.y * 0.94;
+  float rg = length(vec2(pu, pv * 3.6));
+  float band = smoothstep(46.0, 49.0, rg) * smoothstep(80.0, 76.0, rg);
+  float pl = smoothstep(36.0, 34.0, length(pp));
+  vec3 pc = mix(vec3(0.50, 0.70, 0.82), vec3(0.85, 0.95, 1.0), 0.5 + 0.5 * sin(pp.y * 0.35)) * (0.65 + 0.35 * smoothstep(44.0, 0.0, length(pp - vec2(-12.0, 12.0))));
+  vec3 ringC = vec3(0.93, 0.80, 0.64);
+  dsc = mix(dsc, ringC, band * (1.0 - pl) * 0.85);
+  dsc = mix(dsc, pc, pl);
+  dsc = mix(dsc, ringC, band * pl * step(pv, 0.0) * 0.85);
+  col = dsc;
+#elif FOREST
+  // Forest planet sky: teal haze and two moons.
+  float n2 = fbm(vPos * 0.004 + vec2(11.0, -7.0));
+  float dm1 = length(vPos - vec2(-430.0, 320.0)), dm2 = length(vPos - vec2(390.0, 430.0));
+  float m1 = smoothstep(64.0, 61.5, dm1), m2 = smoothstep(25.0, 23.0, dm2);
+  vec3 fc = mix(vec3(0.04, 0.12, 0.11), vec3(0.19, 0.11, 0.25), h);
+  fc += vec3(0.10, 0.30, 0.20) * pow(n1, 3.0) * 0.55 + vec3(0.30, 0.12, 0.30) * pow(n2, 3.5) * 0.4;
+  fc += vec3(0.86, 0.92, 0.86) * st * 0.6 * (1.0 - max(m1, m2));
+  fc += vec3(0.95, 0.78, 0.55) * 0.10 * smoothstep(200.0, 64.0, dm1);
+  vec3 moonA = vec3(0.95, 0.80, 0.60) * (0.78 + 0.22 * fbm((vPos - vec2(-430.0, 320.0)) * 0.045)) * (0.75 + 0.25 * smoothstep(90.0, 0.0, length(vPos - vec2(-455.0, 345.0))));
+  fc = mix(fc, moonA, m1);
+  fc = mix(fc, vec3(0.62, 0.88, 0.86), m2);
+  col = fc;
+#else
   float yN = vPos.y / uHalf.y;
   float aa = max(fwidth(vPos.y), 0.5);
   // Night gradient: deep indigo overhead, warming to violet and magenta towards the horizon.
-  vec3 col = mix(vec3(0.17, 0.045, 0.21), vec3(0.035, 0.028, 0.10), smoothstep(0.12, 0.62, h));
+  col = mix(vec3(0.17, 0.045, 0.21), vec3(0.035, 0.028, 0.10), smoothstep(0.12, 0.62, h));
   col = mix(col, vec3(0.010, 0.014, 0.045), smoothstep(0.62, 1.0, h));
-  float n1 = fbm(vPos * 0.0022 + 3.0);
-  float n2 = fbm(vPos * 0.004 + vec2(11.0, -7.0));
   // Horizon glow behind the far range: wide magenta haze around a small hot gold core.
   float gd = length(vec2(vPos.x * 0.5, vPos.y + 0.30 * uHalf.y)) / uHalf.y;
   vec3 glow = vec3(0.60, 0.13, 0.40) * exp(-gd * 2.6) * 0.6 + vec3(1.0, 0.66, 0.32) * exp(-gd * 8.0) * 0.5;
   col += glow;
   // Stars: sparse and small, fading out near the glowing horizon.
-  float st = stars(vPos, 34.0, 0.07, 0.55) + stars(vPos + 50.0, 72.0, 0.20, 0.85);
   float stSky = st * smoothstep(-0.45, 0.15, yN);
   // Long, low cloud banks: dark bodies with faint magenta underlight.
   float cl = fbm(vec2(vPos.x * 0.0015 + uTime * 0.003, vPos.y * 0.0085) + vec2(5.0, 2.0));
@@ -91,36 +147,7 @@ void main() {
   float in2 = smoothstep(r2 + aa, r2 - aa, vPos.y);
   vec3 mtn2 = vec3(0.028, 0.018, 0.055) + vec3(0.40, 0.12, 0.34) * exp(-max(r2 - vPos.y, 0.0) / 2.0) * 0.35;
   col = mix(col, mtn2, in2);
-  // Forest planet sky: teal haze and two moons.
-  float dm1 = length(vPos - vec2(-430.0, 320.0)), dm2 = length(vPos - vec2(390.0, 430.0));
-  float m1 = smoothstep(64.0, 61.5, dm1), m2 = smoothstep(25.0, 23.0, dm2);
-  vec3 fc = mix(vec3(0.04, 0.12, 0.11), vec3(0.19, 0.11, 0.25), h);
-  fc += vec3(0.10, 0.30, 0.20) * pow(n1, 3.0) * 0.55 + vec3(0.30, 0.12, 0.30) * pow(n2, 3.5) * 0.4;
-  fc += vec3(0.86, 0.92, 0.86) * st * 0.6 * (1.0 - max(m1, m2));
-  fc += vec3(0.95, 0.78, 0.55) * 0.10 * smoothstep(200.0, 64.0, dm1);
-  vec3 moonA = vec3(0.95, 0.80, 0.60) * (0.78 + 0.22 * fbm((vPos - vec2(-430.0, 320.0)) * 0.045)) * (0.75 + 0.25 * smoothstep(90.0, 0.0, length(vPos - vec2(-455.0, 345.0))));
-  fc = mix(fc, moonA, m1);
-  fc = mix(fc, vec3(0.62, 0.88, 0.86), m2);
-  col = mix(col, fc, uForest);
-  // Dune sea sky: an orange dusk, a big low sun and a ringed planet.
-  vec3 dsc = mix(vec3(0.98, 0.56, 0.30), vec3(0.32, 0.14, 0.36), smoothstep(0.15, 0.72, h));
-  dsc = mix(dsc, vec3(0.08, 0.05, 0.18), smoothstep(0.7, 1.0, h));
-  dsc += vec3(0.95, 0.45, 0.40) * pow(n1, 3.0) * 0.3;
-  float ds = length(vPos - vec2(330.0, -170.0));
-  dsc += vec3(1.0, 0.72, 0.38) * 0.4 * smoothstep(420.0, 0.0, ds);
-  dsc = mix(dsc, vec3(1.0, 0.94, 0.74), smoothstep(84.0, 81.0, ds));
-  dsc += vec3(0.86, 0.85, 1.0) * st * smoothstep(0.55, 0.95, h) * 0.8;
-  vec2 pp = vPos - vec2(-470.0, 350.0);
-  float pu = pp.x * 0.94 + pp.y * 0.34, pv = -pp.x * 0.34 + pp.y * 0.94;
-  float rg = length(vec2(pu, pv * 3.6));
-  float band = smoothstep(46.0, 49.0, rg) * smoothstep(80.0, 76.0, rg);
-  float pl = smoothstep(36.0, 34.0, length(pp));
-  vec3 pc = mix(vec3(0.50, 0.70, 0.82), vec3(0.85, 0.95, 1.0), 0.5 + 0.5 * sin(pp.y * 0.35)) * (0.65 + 0.35 * smoothstep(44.0, 0.0, length(pp - vec2(-12.0, 12.0))));
-  vec3 ringC = vec3(0.93, 0.80, 0.64);
-  dsc = mix(dsc, ringC, band * (1.0 - pl) * 0.85);
-  dsc = mix(dsc, pc, pl);
-  dsc = mix(dsc, ringC, band * pl * step(pv, 0.0) * 0.85);
-  col = mix(col, dsc, uDesert);
+#endif
   // Film grain.
   col += (hash12(floor(vPos * 1.4)) - 0.5) * 0.035;
   gl_FragColor = vec4(max(col, 0.0), 1.0);
@@ -139,23 +166,22 @@ field.tex.minFilter = THREE.LinearMipmapLinearFilter;
 field.tex.generateMipmaps = true;
 field.tex.unpackAlignment = 1;
 export const levelMat = new THREE.ShaderMaterial({
+  defines: THEME_DEFINES(),
   uniforms: {
     uField: { value: field.tex },
     uSize: { value: new THREE.Vector2(W, H) },
     uP1: { value: srgb3(P1HEX) },
     uP2: { value: srgb3(P2HEX) },
-    uForest: { value: 0 },
-    uDesert: { value: 0 },
-    uSteel: { value: 0 },
     uLights: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },   // (x, y, strength): see lights.js
     uLightN: { value: 0 },
   },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
-uniform sampler2D uField; uniform vec2 uSize; uniform vec3 uP1; uniform vec3 uP2; uniform float uForest; uniform float uSteel; uniform float uDesert;
+uniform sampler2D uField; uniform vec2 uSize; uniform vec3 uP1; uniform vec3 uP2;
 uniform vec3 uLights[8]; uniform int uLightN;
 varying vec2 vUv;
 ${NOISE_GLSL}
+${THEME_GLSL}
 vec3 rock(float y) {
   float t = 0.5 + 0.5 * sin(y * 6.2831853 / 520.0 + 0.7);
   float f = t * 3.0;
@@ -194,24 +220,31 @@ void main() {
   float stroke = vnoise(bp * vec2(0.012, 0.10)) * 0.6 + vnoise(bp * vec2(0.035, 0.32)) * 0.4;
   float brush = smoothstep(0.32, 0.78, stroke);
   float grain = hash12(floor(px * 1.5)) - 0.5;
-  vec3 soil = mix(vec3(0.17, 0.12, 0.09), vec3(0.28, 0.20, 0.13), 0.5 + 0.5 * sin(px.y * 0.05));
-  col = mix(col, soil, uForest);
-  vec3 sand = mix(vec3(0.80, 0.58, 0.36), vec3(0.62, 0.38, 0.25), 0.5 + 0.5 * sin(px.y * 0.07 + 3.0 * fbm(px * 0.012)));
-  col = mix(col, sand, uDesert);
+#if FOREST
+  col = mix(vec3(0.17, 0.12, 0.09), vec3(0.28, 0.20, 0.13), 0.5 + 0.5 * sin(px.y * 0.05));   // soil
+#endif
+#if DESERT
+  col = mix(vec3(0.80, 0.58, 0.36), vec3(0.62, 0.38, 0.25), 0.5 + 0.5 * sin(px.y * 0.07 + 3.0 * fbm(px * 0.012)));   // sand
+#endif
+#if STEEL
   vec2 q = abs(fract(px / 64.0) - 0.5) * 64.0;
   float seam = smoothstep(29.5, 31.0, max(q.x, q.y));
-  vec3 steel = vec3(0.24, 0.26, 0.34) * (0.88 + 0.12 * fbm(px * 0.02)) * (1.0 - 0.4 * seam);
-  col = mix(col, steel, uSteel);
-  col *= mix(0.76 + 0.26 * fbm(px * 0.02) + 0.18 * stroke, 0.8 + 0.32 * fbm(px * 0.035) + 0.06 * vnoise(px * 0.18), uDesert);
-  col *= mix(1.0, mix(0.34, 0.5, uDesert), deep);
-  vec3 warm = mix(vec3(0.92, 0.32, 0.40), vec3(0.45, 0.86, 0.36), uForest), hot = mix(vec3(1.0, 0.68, 0.44), vec3(0.75, 0.95, 0.55), uForest), cool = vec3(0.16, 0.12, 0.40);
-  warm = mix(warm, vec3(1.0, 0.86, 0.58), uDesert); hot = mix(hot, vec3(1.0, 0.94, 0.76), uDesert);
+  col = vec3(0.24, 0.26, 0.34) * (0.88 + 0.12 * fbm(px * 0.02)) * (1.0 - 0.4 * seam);
+#endif
+#if DESERT
+  col *= 0.8 + 0.32 * fbm(px * 0.035) + 0.06 * vnoise(px * 0.18);
+#else
+  col *= 0.76 + 0.26 * fbm(px * 0.02) + 0.18 * stroke;
+#endif
+  col *= mix(1.0, mix(0.34, 0.5, kDesert), deep);
+  vec3 warm = mix(vec3(0.92, 0.32, 0.40), vec3(0.45, 0.86, 0.36), kForest), hot = mix(vec3(1.0, 0.68, 0.44), vec3(0.75, 0.95, 0.55), kForest), cool = vec3(0.16, 0.12, 0.40);
+  warm = mix(warm, vec3(1.0, 0.86, 0.58), kDesert); hot = mix(hot, vec3(1.0, 0.94, 0.76), kDesert);
   float litK = max(lit, 0.0);
   col = mix(col, warm * (0.4 + 0.6 * brush), rim * litK * (0.3 + 0.6 * brush));
   col = mix(col, col * 0.5 + cool * 0.1, rim * max(-lit, 0.0) * 0.75);
   col += mix(warm, hot, litK * litK) * lip * litK * 0.75 + cool * lip * max(-lit, 0.0) * 0.12;
-  col = mix(col, vec3(0.20, 0.52, 0.22), uForest * rim * smoothstep(0.2, 0.8, lit) * 0.7);
-  col = mix(col, vec3(0.96, 0.82, 0.58), uDesert * rim * smoothstep(0.2, 0.8, lit) * 0.6);
+  col = mix(col, vec3(0.20, 0.52, 0.22), kForest * rim * smoothstep(0.2, 0.8, lit) * 0.7);
+  col = mix(col, vec3(0.96, 0.82, 0.58), kDesert * rim * smoothstep(0.2, 0.8, lit) * 0.6);
 
   // Point lights (a frag grenade, blast flashes): warm light on the rock faces turned towards them, and a soft glow in the air.
   float lt = 0.0, glow = 0.0;
@@ -247,6 +280,15 @@ void main() {
   transparent: true,
   depthWrite: false,
 });
+// Compiles the sky and terrain shaders for a map theme's switches ({ forest, desert, steel }, each 0 or 1).
+export function setShaderTheme(sh) {
+  const d = { FOREST: sh.forest ? 1 : 0, DESERT: sh.desert ? 1 : 0, STEEL: sh.steel ? 1 : 0 };
+  for (const m of [skyMat, levelMat]) {
+    if (Object.keys(d).every((k) => m.defines[k] === d[k])) continue;
+    Object.assign(m.defines, d);
+    m.needsUpdate = true;
+  }
+}
 const levelMesh = new THREE.Mesh(new THREE.PlaneGeometry(W, H), levelMat);
 levelMesh.position.set(W / 2, H / 2, 0);
 scene.add(levelMesh);

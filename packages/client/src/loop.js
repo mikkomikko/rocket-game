@@ -25,6 +25,7 @@ import { stepEffects } from './fx/effects.js';
 import { views } from './ships/view.js';
 import { stepSim } from '@rocket-duel/shared/sim.js';
 import { drawPos, easeCorrections, net, netStep, readOnlineInput, sendInputs, snapAlpha } from './net/online.js';
+import { startEl } from './ui/startScreen.js';
 
 // The fixed-step simulation (step) and the render loop (frame).
 function step(h) {
@@ -47,6 +48,7 @@ function frame(now) {
   fpsAcc += dt; fpsFrames++;
   sfx.frame();
   if (fpsAcc > 0.5) { mon.fps = Math.round(fpsFrames / fpsAcc); fpsAcc = 0; fpsFrames = 0; }
+  if (!startEl.hidden) return;   // the New game page covers the game: nothing to step or draw
 
   readInputs();
   if (net.online) readOnlineInput();

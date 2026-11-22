@@ -15,7 +15,8 @@ import { connect, hasSeat, net } from '../net/online.js';
 import { appEl } from './header.js';
 
 /* ------------------------------------------------------------------ *
- * Start screen: players, skins (colour and ship design) and map. Shown when the page opens and
+ * Start screen: players, skins (colour and ship design) and map. A page of its own over the whole
+ * window: the game behind it is inert and isn't drawn (loop.js). Shown when the page opens and
  * from the New game button (or N). Online starts a room on the server; an
  * invite link (?room=abc123) opens it as "Join online game" instead.
  * ------------------------------------------------------------------ */
@@ -171,12 +172,15 @@ export function openStart() {
   }
   renderStart();
   startEl.hidden = false;
+  startEl.scrollTop = 0;
+  appEl.inert = true;
   game.picking = true;
   keysDown.clear();
-  document.getElementById('startGo').focus();
+  document.getElementById('startGo').focus({ preventScroll: true });
 }
 function closeStart() {
   startEl.hidden = true;
+  appEl.inert = false;
   game.picking = picker.open;
   keysDown.clear();
   if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();

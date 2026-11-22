@@ -4,7 +4,7 @@ import { isPractice, isSolo, P } from '@rocket-duel/shared/config.js';
 import { game } from '@rocket-duel/shared/state.js';
 import { approach, clamp } from '@rocket-duel/shared/math.js';
 import { H, level, W } from '@rocket-duel/shared/level/mask.js';
-import { glowMat, renderer, scene, skyMesh, stage } from './scene.js';
+import { glowMat, scene, sizeRenderer, skyMesh, stage } from './scene.js';
 import { shapeGeo, views } from '../ships/view.js';
 import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { ENEMY_RED } from '../maps/starship/constants.js';
@@ -21,7 +21,7 @@ export let viewW = 1, viewH = 1;
 new ResizeObserver(() => {
   viewW = Math.max(1, stage.clientWidth);
   viewH = Math.max(1, stage.clientHeight);
-  renderer.setSize(viewW, viewH, false);
+  sizeRenderer(viewW, viewH);
 }).observe(stage);
 
 // Which ship each view follows: online, one view of your own ship; in solo play, one of ship 1; else one each.

@@ -103,35 +103,6 @@
           </div>
         </div>
       </div>
-      <div class="start" id="startScreen" hidden role="dialog" aria-modal="true" aria-labelledby="startTitle">
-        <div class="start-box">
-          <h2 class="start-title" id="startTitle">New game</h2>
-          <section class="start-row" id="startPlayersRow">
-            <h3 class="start-label" id="lblPlayers">Players</h3>
-            <div class="seg" role="group" aria-labelledby="lblPlayers">
-              <button class="seg-btn" type="button" data-players="1" aria-pressed="false"><span class="seg-ico"></span><span><b>1 player</b><small>Against a computer pilot. WASD or the arrows steer.</small></span></button>
-              <button class="seg-btn" type="button" data-players="2" aria-pressed="false"><span class="seg-ico"></span><span><b>2 players</b><small>Split screen. WASD against the arrows.</small></span></button>
-              <button class="seg-btn" type="button" data-players="online" aria-pressed="false"><span class="seg-ico"></span><span><b>Online</b><small>Play a friend over the internet. You get a link to send.</small></span></button>
-            </div>
-          </section>
-          <p class="start-join" id="startJoin" hidden>A friend invited you to an online game. Pick your colour and join.</p>
-          <section class="start-row">
-            <h3 class="start-label">Skins</h3>
-            <div class="skins" id="skinRows"></div>
-          </section>
-          <section class="start-row" id="startMapRow">
-            <h3 class="start-label" id="lblMap">Map</h3>
-            <div class="start-maps" id="startMaps" role="group" aria-labelledby="lblMap"></div>
-          </section>
-          <div class="start-foot">
-            <span class="start-hint"><kbd>Enter</kbd>start <kbd>N</kbd>new game during play</span>
-            <span class="start-actions">
-              <button class="pbtn" id="startBack" type="button" hidden>Back to game</button>
-              <button class="start-go" id="startGo" type="button">Start game</button>
-            </span>
-          </div>
-        </div>
-      </div>
       <div class="load-error" id="loadError" hidden><p>The game engine didn’t load. Reload the page; if it keeps failing, check the browser console for errors.</p></div>
     </div>
     <aside class="panel" id="panel" aria-label="Tuning panel">
@@ -139,6 +110,38 @@
     </aside>
   </div>
 </div>
+
+<!-- The New game page: replaces the game view (which stops drawing) while it is open. -->
+<main class="start" id="startScreen" hidden aria-labelledby="startTitle">
+  <div class="start-box">
+    <p class="start-brand">Rocket duel</p>
+    <h2 class="start-title" id="startTitle">New game</h2>
+    <section class="start-row" id="startPlayersRow">
+      <h3 class="start-label" id="lblPlayers">Players</h3>
+      <div class="seg" role="group" aria-labelledby="lblPlayers">
+        <button class="seg-btn" type="button" data-players="1" aria-pressed="false"><span class="seg-ico"></span><span><b>1 player</b><small>Against a computer pilot. WASD or the arrows steer.</small></span></button>
+        <button class="seg-btn" type="button" data-players="2" aria-pressed="false"><span class="seg-ico"></span><span><b>2 players</b><small>Split screen. WASD against the arrows.</small></span></button>
+        <button class="seg-btn" type="button" data-players="online" aria-pressed="false"><span class="seg-ico"></span><span><b>Online</b><small>Play a friend over the internet. You get a link to send.</small></span></button>
+      </div>
+    </section>
+    <p class="start-join" id="startJoin" hidden>A friend invited you to an online game. Pick your colour and join.</p>
+    <section class="start-row">
+      <h3 class="start-label">Skins</h3>
+      <div class="skins" id="skinRows"></div>
+    </section>
+    <section class="start-row" id="startMapRow">
+      <h3 class="start-label" id="lblMap">Map</h3>
+      <div class="start-maps" id="startMaps" role="group" aria-labelledby="lblMap"></div>
+    </section>
+    <div class="start-foot">
+      <span class="start-hint"><kbd>Enter</kbd>start <kbd>N</kbd>new game during play</span>
+      <span class="start-actions">
+        <button class="pbtn" id="startBack" type="button" hidden>Back to game</button>
+        <button class="start-go" id="startGo" type="button">Start game</button>
+      </span>
+    </div>
+  </div>
+</main>
 
 <dialog id="jsonDialog" aria-labelledby="jsonTitle">
   <h2 id="jsonTitle">Tuning as JSON</h2>
