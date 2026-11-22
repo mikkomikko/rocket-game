@@ -7,16 +7,38 @@ import { ships } from '@rocket-duel/shared/ships/ship.js';
 import { appEl } from './header.js';
 import { activeMap } from '../maps/index.js';
 import { updateVictory } from './victory.js';
+import { net } from '../net/online.js';
 
 /* HUD */
-// The small top-centre panel shown while the UI is hidden: health bar, ammo strip and level.
+// Shown while the UI is hidden: each player's health bar and ammo strip in a top corner, the level at the
+// top centre and a key legend in each bottom corner.
 const mini = {
   players: [0, 1].map((i) => {
     const el = document.querySelector(`.mh-p[data-p="${i}"]`);
     return { el, tag: el.querySelector('.mh-tag'), hp: el.querySelector('.mh-hp > i'), ammo: el.querySelector('.mh-ammo > i'), note: el.querySelector('.mh-note'), last: {} };
   }),
   level: document.getElementById('miniLevel'), last: {},
+  keys: [0, 1].map((i) => document.querySelector(`.mh-keys[data-p="${i}"]`)),
 };
+// Key legends for the bottom corners: one per local player, or one for the single ship both key sets fly.
+const k = (...keys) => keys.map((x) => `<kbd>${x}</kbd>`).join('');
+const row = (keys, what) => `<span>${keys}${what}</span>`;
+const LEGEND = {
+  p1: row(k('W'), 'thrust') + row(k('A', 'D'), 'turn') + row(k('L Shift'), 'fire') + row(k('S'), 'weapon'),
+  p2: row(k('↑'), 'thrust') + row(k('←', '→'), 'turn') + row(k('Space'), 'fire') + row(k('↓'), 'weapon'),
+  both: row(k('W') + '<i class="or">/</i>' + k('↑'), 'thrust') + row(k('A', 'D') + '<i class="or">/</i>' + k('←', '→'), 'turn')
+    + row(k('L Shift') + '<i class="or">/</i>' + k('Space'), 'fire') + row(k('S') + '<i class="or">/</i>' + k('↓'), 'weapon'),
+  pad: row(k('Stick'), 'turn') + row(k('A'), 'thrust') + row(k('X'), 'fire') + row(k('Y'), 'weapon'),
+};
+function legendFor(i) {
+  if (isSolo() || net.online) {
+    // One ship: its legend sits on the same side as its panel (Player 2's online seat is on the right).
+    const mine = net.online ? net.id : 0;
+    if (i !== mine) return '';
+    return ships.some((s) => s.padActive) ? LEGEND.pad : LEGEND.both;
+  }
+  return ships[i]?.padActive ? LEGEND.pad : i ? LEGEND.p2 : LEGEND.p1;
+}
 function setMini(key, value) {
   if (mini.last[key] === value) return;
   mini.last[key] = value;
@@ -47,6 +69,10 @@ function updateMiniHud() {
   }
   const lv = activeMap().hudLevel?.() || `Level: ${isPractice() ? 'Practice' : (MAPS[level.builtMap] || MAPS.cave).name}`;
   setMini('level', lv);
+  for (let i = 0; i < 2; i++) {
+    const html = legendFor(i);
+    if (mini.last['keys' + i] !== html) { mini.last['keys' + i] = html; mini.keys[i].innerHTML = html; }
+  }
 }
 const huds = [...document.querySelectorAll('.hud')].map((el) => ({
   score: el.querySelector('.hud-score'), hull: el.querySelector('.meter-fill.hull'), ammo: el.querySelector('.meter-fill.ammo'),

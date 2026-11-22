@@ -3,8 +3,9 @@
 .app.ui-hidden .bar, .app.ui-hidden .panel, .app.ui-hidden .hud, .app.ui-hidden .wavebar { display: none !important; }
 .ui-show {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 3;
   display: none;
   align-items: center;
@@ -24,28 +25,13 @@
 .ui-show:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 .ui-show kbd { font: inherit; font-size: 11px; opacity: 0.7; }
 .app.ui-hidden .ui-show { display: inline-flex; }
-.mini-hud {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: rgba(14, 11, 38, 0.6);
-  color: #efecff;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.3;
-  pointer-events: none;
-}
-.app.ui-hidden .mini-hud { display: flex; }
-.mh-players { display: flex; gap: 18px; }
-.mh-p { display: flex; flex-direction: column; gap: 5px; width: 200px; }
+/* Hidden UI: each player's health and ammo in a top corner, the level at the top centre, keys in the bottom corners */
+.mini-hud { position: absolute; inset: 0; z-index: 2; display: none; pointer-events: none; color: #efecff; font-size: 12px; font-weight: 600; line-height: 1.3; }
+.app.ui-hidden .mini-hud { display: block; }
+.mh-p, #miniLevel, .mh-keys { position: absolute; border-radius: 12px; background: rgba(14, 11, 38, 0.6); }
+.mh-p { top: 10px; display: flex; flex-direction: column; gap: 5px; width: 200px; padding: 8px 12px; }
+.mh-p[data-p="0"] { left: 10px; }
+.mh-p[data-p="1"] { right: 10px; }
 .mh-p[hidden] { display: none; }
 .mh-tag { font-size: 11px; font-weight: 760; letter-spacing: 0.04em; }
 .mh-tag:empty { display: none; }
@@ -67,4 +53,13 @@
 .mh-p.dead .mh-hp, .mh-p.dead .mh-ammo { opacity: 0.35; }
 .mh-note { font-size: 11px; color: #cfc9f2; text-align: center; }
 .mh-note:empty { display: none; }
-#miniLevel { font-size: 11px; color: #b9b3e0; }
+#miniLevel { top: 10px; left: 50%; transform: translateX(-50%); padding: 5px 10px; font-size: 11px; color: #b9b3e0; white-space: nowrap; }
+#miniLevel:empty { display: none; }
+/* Key legend */
+.mh-keys { bottom: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; max-width: calc(50% - 90px); padding: 6px 10px; font-size: 11px; color: #b9b3e0; opacity: 0.85; }
+.mh-keys[data-p="0"] { left: 10px; }
+.mh-keys[data-p="1"] { right: 10px; justify-content: flex-end; }
+.mh-keys:empty { display: none; }
+.mh-keys > span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.mh-keys kbd { font: inherit; font-size: 11px; font-weight: 700; color: #efecff; background: rgba(255, 255, 255, 0.14); border-radius: 5px; padding: 0 5px; min-width: 9px; text-align: center; }
+.mh-keys .or { opacity: 0.7; }
