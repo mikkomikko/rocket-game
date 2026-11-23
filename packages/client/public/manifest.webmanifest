@@ -1,0 +1,14 @@
+{
+  "name": "Rocket duel",
+  "short_name": "Rocket duel",
+  "description": "Two ships, one cave.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#16132f",
+  "theme_color": "#16132f",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

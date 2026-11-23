@@ -3,8 +3,8 @@
 .app[data-online] #btnLeave { display: inline-flex; }
 .app[data-online] #btnNewGame, .app[data-online] #btnRestart, .app[data-online] #btnPause, .app[data-online] #btnPanel,
 .app[data-online] .panel, .app[data-online] .hud-row { display: none; }
-.start-join { margin: 0 0 4px; padding: 12px 0 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); color: #dcd8f7; font-size: 15px; }
-.start-join[hidden], .start-row[hidden] { display: none; }
+.start-join { margin-top: 14px; color: #dcd8f7; font-size: 15px; }
+.start-join[hidden] { display: none; }
 
 /* The card at the top of the game view: connecting, waiting for an opponent, reconnecting. */
 .netcard {

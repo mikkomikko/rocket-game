@@ -211,4 +211,5 @@ export const DESIGNS = [
     svg: arrowSVG,
   },
 ];
-export const designOf = (id) => DESIGNS.find((d) => d.id === id) || DESIGNS[0];
+// Arrow is the default design (an unknown or missing id gets it too).
+export const designOf = (id) => DESIGNS.find((d) => d.id === id) || DESIGNS.find((d) => d.id === 'arrow');

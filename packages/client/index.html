@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rocket duel</title>
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#16132f">
 <link rel="preload" href="/fonts/allo.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body>
@@ -111,33 +116,36 @@
   </div>
 </div>
 
-<!-- The New game page: replaces the game view (which stops drawing) while it is open. -->
+<!-- The New game page: replaces the game view (which stops drawing) while it is open. Two screens:
+     how to play (mode tiles), then the ships and the map. An invite link opens straight on the second. -->
 <main class="start" id="startScreen" hidden aria-labelledby="startTitle">
-  <div class="start-box">
-    <p class="start-brand">Rocket duel</p>
-    <h2 class="start-title" id="startTitle">New game</h2>
-    <section class="start-row" id="startPlayersRow">
-      <h3 class="start-label" id="lblPlayers">Players</h3>
-      <div class="seg" role="group" aria-labelledby="lblPlayers">
-        <button class="seg-btn" type="button" data-players="1" aria-pressed="false"><span class="seg-ico"></span><span><b>1 player</b><small>Against a computer pilot.<span class="keys-only"> WASD or the arrows steer.</span></small></span></button>
-        <button class="seg-btn" type="button" data-players="2" aria-pressed="false"><span class="seg-ico"></span><span><b>2 players</b><small>Split screen. WASD against the arrows.</small></span></button>
-        <button class="seg-btn" type="button" data-players="online" aria-pressed="false"><span class="seg-ico"></span><span><b>Online</b><small>Play a friend over the internet. You get a link to send.</small></span></button>
-      </div>
-    </section>
-    <p class="start-join" id="startJoin" hidden>A friend invited you to an online game. Pick your colour and join.</p>
-    <section class="start-row">
-      <h3 class="start-label">Skins</h3>
-      <div class="skins" id="skinRows"></div>
-    </section>
-    <section class="start-row" id="startMapRow">
-      <h3 class="start-label" id="lblMap">Map</h3>
-      <div class="start-maps" id="startMaps" role="group" aria-labelledby="lblMap"></div>
+  <div class="start-step" id="startModeStep">
+    <header class="start-top">
+      <p class="start-brand">Rocket duel</p>
+      <h1 class="start-title" id="startTitle">How do you want to play?</h1>
+    </header>
+    <div class="start-tiles" id="startTiles" role="group" aria-labelledby="startTitle"></div>
+    <div class="start-mode-foot">
+      <button class="pbtn" id="startBackToGame" type="button" hidden>Back to game</button>
+    </div>
+  </div>
+  <div class="start-step" id="startSetupStep" hidden>
+    <header class="start-bar">
+      <button class="start-back" id="startBack" type="button"><span aria-hidden="true">‹</span> <span id="startBackMode"></span></button>
+      <h1 class="start-bar-title" id="startSetupTitle">Pick your ships and a map</h1>
+    </header>
+    <p class="start-join" id="startJoin" hidden>A friend invited you to an online game. Pick your ship and join.</p>
+    <div class="start-halves" id="startHalves"></div>
+    <section class="start-maps" id="startMapRow" aria-labelledby="startMapName">
+      <h2 class="start-map-title"><span id="startMapName"></span> <span class="start-map-kind" id="startMapKind"></span></h2>
+      <p class="start-map-desc" id="startMapDesc"></p>
+      <div class="start-strip" id="startMaps" role="group" aria-label="Maps"></div>
     </section>
     <div class="start-foot">
-      <span class="start-hint"><kbd>Enter</kbd>start <kbd>N</kbd>new game during play</span>
+      <span class="start-hint" id="startHint"></span>
       <span class="start-actions">
-        <button class="pbtn" id="startBack" type="button" hidden>Back to game</button>
-        <button class="start-go" id="startGo" type="button">Start game</button>
+        <button class="pbtn" id="startBackToGame2" type="button" hidden>Back to game</button>
+        <button class="start-go" id="startGo" type="button">Launch</button>
       </span>
     </div>
   </div>

@@ -2,7 +2,7 @@
 .touch body { overscroll-behavior: none; }
 .touch .stage { touch-action: none; }
 .touch kbd, .touch .keys-only, .touch .hud-keys, .touch .mh-keys, .touch .start-hint, .touch .picker-hint,
-.touch .seg-btn[data-players="2"] { display: none !important; }
+.touch .start-tile[data-v="2"] { display: none !important; }
 
 .touch-ui { display: none; }
 .touch .touch-ui {
